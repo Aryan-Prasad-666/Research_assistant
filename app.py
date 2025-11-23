@@ -53,18 +53,16 @@ llm_cohere = ChatCohere(
     temperature=0.6
 )
 
-# Supermemory setup for chatbot
 client = Supermemory(api_key=supermemory_key)
 groq_client = OpenAI(
     api_key=groq_key,
     base_url="https://api.supermemory.ai/v3/https://api.groq.com/openai/v1",
     default_headers={
         "x-supermemory-api-key": supermemory_key,
-        "x-sm-user-id": "user_123"  # Enables auto-memory scoping
+        "x-sm-user-id": "user_123" 
     }
 )
 
-# Simplified LangChain Prompt Template for Research Assistant
 research_prompt = PromptTemplate(
     input_variables=["user_query"],
     template="""You are an expert research assistant powered by advanced AI. Your goal is to provide accurate, insightful, and well-structured responses to research-oriented queries. 
@@ -92,7 +90,6 @@ def cleanup_old_files():
             except Exception:
                 pass
 
-# json cleaner
 def extract_json(content: str) -> str:
     """Extract the first JSON object from raw text safely."""
     content = re.sub(r"^```(?:json)?", "", content.strip(), flags=re.IGNORECASE | re.MULTILINE)
@@ -345,28 +342,24 @@ def chat():
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
 
-        # Format LangChain prompt (proxy auto-injects memory behind the scenes)
         system_prompt = research_prompt.format(
             user_query=user_message
         )
 
-        # Build messages with system prompt
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
-        # Call Groq via proxy (auto-handles memory injection on top of our prompt)
         response = groq_client.chat.completions.create(
-            model="openai/gpt-oss-120b",  # Or swap to llama3-70b-8192 for faster research tasks
+            model="openai/gpt-oss-120b",  
             messages=messages,
             max_tokens=1000,
-            temperature=0.7  # Balanced for research: creative yet factual
+            temperature=0.7  
         )
 
         ai_response = response.choices[0].message.content
 
-        # Proxy auto-stores exchanges, so no manual add needed
 
         return jsonify({'response': ai_response})
 
