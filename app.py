@@ -11,10 +11,13 @@ from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import CommaSeparatedListOutputParser
 from langchain_cohere import ChatCohere
+from langchain.prompts import PromptTemplate
 from functools import lru_cache
 import logging
 from datetime import datetime
 import io
+from openai import OpenAI
+from supermemory import Supermemory
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -26,7 +29,8 @@ load_dotenv()
 groq_key = os.getenv('groq_api_key')
 gemini_key = os.getenv('ARYAN_GEMINI_KEY')
 cohere_key = os.getenv('COHERE_API_KEY')
-if not all([groq_key, gemini_key, cohere_key]):
+supermemory_key = os.getenv('ARYAN_SUPERMEMORY_API_KEY')
+if not all([groq_key, gemini_key, cohere_key, supermemory_key]):
     raise ValueError("Missing one or more API keys in environment variables")
 
 gemini_llm = LLM(
@@ -47,6 +51,29 @@ llm_gemini = ChatGoogleGenerativeAI(
 llm_cohere = ChatCohere(
     api_key=cohere_key,
     temperature=0.6
+)
+
+# Supermemory setup for chatbot
+client = Supermemory(api_key=supermemory_key)
+groq_client = OpenAI(
+    api_key=groq_key,
+    base_url="https://api.supermemory.ai/v3/https://api.groq.com/openai/v1",
+    default_headers={
+        "x-supermemory-api-key": supermemory_key,
+        "x-sm-user-id": "user_123"  # Enables auto-memory scoping
+    }
+)
+
+# Simplified LangChain Prompt Template for Research Assistant
+research_prompt = PromptTemplate(
+    input_variables=["user_query"],
+    template="""You are an expert research assistant powered by advanced AI. Your goal is to provide accurate, insightful, and well-structured responses to research-oriented queries. 
+Draw from our shared conversation history and knowledge to personalize and enhance your assistance.
+
+User Query: {user_query}
+
+dont use any special symbols especially *, |, etc. answer in pure texts
+"""
 )
 
 OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'outputs')
@@ -190,104 +217,68 @@ def run_crew(flowchart_description):
                 mermaid_data = json.load(f)
             mermaid_code = mermaid_data.get('mermaid_code', '')
             if not validate_mermaid_code(mermaid_code):
-                result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': 'Invalid or empty Mermaid code'})
+                result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': 'Invalid Mermaid code generated'})
                 continue
-            variant_result = {'id': variant['id'], 'name': variant['name']}
-            try:
-                variant_result['svg_path'] = render_with_kroki(mermaid_code, variant, "svg")
-                variant_result['png_path'] = render_with_kroki(mermaid_code, variant, "png")
-                result_file = os.path.join(OUTPUT_DIR, f"flowchart_result_variant{variant['id']}.json")
-                with open(result_file, 'w') as f:
-                    json.dump(variant_result, f, indent=2)
-                result_json['variants'].append(variant_result)
-            except Exception as e:
-                variant_result['error'] = f"Rendering failed: {str(e)}"
-                result_json['variants'].append(variant_result)
+            # Render SVG and PNG
+            for fmt in ['svg', 'png']:
+                try:
+                    render_with_kroki(mermaid_code, variant, fmt)
+                except Exception as render_err:
+                    result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': f'Render failed for {fmt}: {str(render_err)}'})
+                    break
+            result_json['variants'].append({'id': variant['id'], 'name': variant['name']})
         except Exception as e:
-            result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': f"Crew execution error: {str(e)}"})
+            logger.error(f"Error generating variant {variant['id']}: {e}")
+            result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': str(e)})
     return result_json
 
 def sanitize_text(text):
-    """Replace or remove problematic Unicode characters."""
-    if not isinstance(text, str):
-        return text
-    text = text.replace('\u2011', '-')
-    text = re.sub(r'[^\x00-\x7F]+', '', text)
-    return text
+    return re.sub(r'\*\*(.*?)\*\*', r'\1', text)
 
-def create_debate_workflow(debate_topic, max_turns=10):
-    output_parser = CommaSeparatedListOutputParser()
-    try:
-        output = sanitize_text(llm_groq.invoke("I wish to have a debate on {}. What would be the fighting sides called? Output just the names and nothing else as comma separated list".format(debate_topic)).content)
-        classes = output_parser.parse(output)
-        if len(classes) != 2:
-            raise ValueError(f"Expected exactly two debate sides, got: {classes}")
-        logger.info(f"Debate sides: {classes}")
-    except Exception as e:
-        logger.error(f"Error determining debate sides: {e}")
-        raise
+def create_debate_workflow(debate_topic, max_turns):
+    classes = ["Proponent", "Opponent"]
+    pro_llm = llm_groq
+    opp_llm = llm_gemini
+    classify_llm = llm_gemini
 
-    class GraphState(TypedDict):
-        classification: Optional[str]
+    class DebateState(TypedDict):
         history: str
-        current_response: Optional[str]
+        classification: str
+        greeting: str
+        current_response: str
         count: int
-        results: Optional[str]
-        greeting: Optional[str]
+        results: str
 
-    workflow = StateGraph(GraphState)
-
-    prefix_start = (
-        'You are in support of {}. You are in a debate with {} over the topic: {}. '
-        'This is the conversation so far \n{}\n. '
-        'Provide a unique, concise argument (one sentence) to support {}, '
-        'countering {} with a specific real-world example, statistic, or reasoning, '
-        'and avoid repeating prior arguments.'
-    )
-
-    @lru_cache(maxsize=100)
-    def classify(question, class0, class1):
-        try:
-            result = sanitize_text(llm_gemini.invoke("classify the sentiment of input as {} or {}. Output just the class. Input:{}".format(class0, class1, question)).content.strip())
-            logger.info(f"Classified input '{question[:50]}...' as: {result}")
-            return result
-        except Exception as e:
-            logger.error(f"Error classifying input: {e}")
-            return class0
-
-    def classify_input_node(state):
-        question = state.get('current_response', '')
-        classification = classify(question, '_'.join(classes[0].split(' ')), '_'.join(classes[1].split(' ')))
-        return {"classification": classification}
+    workflow = StateGraph(DebateState)
 
     def handle_greeting_node(state):
-        greeting = f"Hello! Today we will witness the fight between {classes[0]} vs {classes[1]}"
+        prompt = f"Create a neutral introduction to the debate on: '{debate_topic}'. Keep it engaging and informative."
+        greeting = sanitize_text(llm_cohere.invoke(prompt).content)
         logger.info(f"Generated greeting: {greeting}")
-        return {"greeting": greeting}
+        return {"greeting": greeting, "history": f"Introduction: {greeting}", "count": 0}
+
+    def classify_input_node(state):
+        history = state.get('history', '')
+        prompt = f"Classify the next response in this debate history as either 'proponent' or 'opponent' based on who should speak next. Debate topic: '{debate_topic}'. History: {history}. Respond with only one word: 'proponent' or 'opponent'."
+        classification = sanitize_text(classify_llm.invoke(prompt).content).strip().lower()
+        if classification not in ['proponent', 'opponent']:
+            classification = 'proponent'  # Default fallback
+        logger.info(f"Classified next speaker: {classification}")
+        return {"classification": classification}
 
     def handle_pro(state):
-        try:
-            summary = state.get('history', '').strip()
-            current_response = state.get('current_response', '').strip()
-            prompt = prefix_start.format(classes[0], classes[1], debate_topic, summary, classes[0], current_response or "Nothing")
-            argument = classes[0] + ": " + sanitize_text(llm_groq.invoke(prompt).content)
-            logger.info(f"Pro argument: {argument}")
-            return {"history": summary + '\n' + argument, "current_response": argument, "count": state.get('count', 0) + 1}
-        except Exception as e:
-            logger.error(f"Error in handle_pro: {e}")
-            return {"history": summary + '\n' + f"{classes[0]}: Error generating argument", "current_response": "Error", "count": state.get('count', 0) + 1}
+        history = state.get('history', '')
+        prompt = f"As the Proponent, provide a strong, evidence-based argument supporting the topic: '{debate_topic}'. Build on previous arguments. Keep concise (2-4 paragraphs). History: {history}"
+        response = sanitize_text(pro_llm.invoke(prompt).content)
+        logger.info(f"Proponent response: {response}")
+        return {"history": history + '\n' + f"{classes[0]}: {response}", "current_response": response, "count": state.get('count', 0) + 1}
 
     def handle_opp(state):
-        try:
-            summary = state.get('history', '').strip()
-            current_response = state.get('current_response', '').strip()
-            prompt = prefix_start.format(classes[1], classes[0], debate_topic, summary, classes[1], current_response or "Nothing")
-            argument = classes[1] + ": " + sanitize_text(llm_gemini.invoke(prompt).content)
-            logger.info(f"Opp argument: {argument}")
-            return {"history": summary + '\n' + argument, "current_response": argument, "count": state.get('count', 0) + 1}
-        except Exception as e:
-            logger.error(f"Error in handle_opp: {e}")
-            return {"history": summary + '\n' + f"{classes[1]}: Error generating argument", "current_response": "Error", "count": state.get('count', 0) + 1}
+        history = state.get('history', '')
+        prompt = f"As the Opponent, provide a compelling counter-argument against the topic: '{debate_topic}'. Use logic and evidence. Keep concise (2-4 paragraphs). History: {history}"
+        response = sanitize_text(opp_llm.invoke(prompt).content)
+        logger.info(f"Opponent response: {response}")
+        return {"history": history + '\n' + f"{classes[1]}: {response}", "current_response": response, "count": state.get('count', 0) + 1}
 
     def result(state):
         try:
@@ -341,6 +332,46 @@ def create_debate_workflow(debate_topic, max_turns=10):
 @app.route('/')
 def index():
     return render_template('home.html')
+
+@app.route('/chatbot')
+def chatbot():
+    current_time = datetime.now().strftime('%H:%M')
+    return render_template('chat.html', current_time=current_time)
+
+@app.route('/chatbot/chat', methods=['POST'])
+def chat():
+    try:
+        user_message = request.json.get('message')
+        if not user_message:
+            return jsonify({'error': 'No message provided'}), 400
+
+        # Format LangChain prompt (proxy auto-injects memory behind the scenes)
+        system_prompt = research_prompt.format(
+            user_query=user_message
+        )
+
+        # Build messages with system prompt
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ]
+
+        # Call Groq via proxy (auto-handles memory injection on top of our prompt)
+        response = groq_client.chat.completions.create(
+            model="openai/gpt-oss-120b",  # Or swap to llama3-70b-8192 for faster research tasks
+            messages=messages,
+            max_tokens=1000,
+            temperature=0.7  # Balanced for research: creative yet factual
+        )
+
+        ai_response = response.choices[0].message.content
+
+        # Proxy auto-stores exchanges, so no manual add needed
+
+        return jsonify({'response': ai_response})
+
+    except Exception as error:
+        return jsonify({'error': str(error)}), 500
 
 @app.route('/flowchart_generator', methods=['GET', 'POST'])
 def flowchart_generator():
