@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+
+{% block title %}JñānaSetu.AI - Multi-Agent Debate{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+    body {
+        font-family: 'Montserrat', sans-serif;
+        background: 
+            linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+            url('https://images.pexels.com/photos/73873/star-clusters-rosette-nebula-star-galaxies-73873.jpeg');
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-attachment: fixed;
+        background-size: cover;
+        color: #ffffff;
+        line-height: 1.6;
+    }
+
+    .debate-container {
+        max-width: 1000px;
+        margin: 60px auto;
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease;
+        backdrop-filter: blur(5px);
+    }
+
+    .debate-container:hover {
+        transform: translateY(-5px);
+    }
+
+    .debate-container h1 {
+        font-size: 2.8rem;
+        color: #ffffff;
+        margin-bottom: 15px;
+        text-align: center;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .debate-container p {
+        font-size: 1.2rem;
+        color: #e0e0e0;
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 400;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .debate-input
+
+-form {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 40px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        position: relative;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(3px);
+    }
+
+    .debate-input-form label {
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: block;
+        color: #ffffff;
+        font-size: 1rem;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .debate-input-form input,
+    .debate-input-form select {
+        width: 100%;
+        padding: 14px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: 'Montserrat', sans-serif;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+    }
+
+    .debate-input-form select option {
+        background: #333333;
+        color: #ffffff;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 1rem;
+    }
+
+    .debate-input-form input:focus,
+    .debate-input-form select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+        outline: none;
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    .debate-input-form input::placeholder {
+        color: #b0b0b0;
+    }
+
+    .debate-input-form button {
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        color: white;
+        padding: 14px 30px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        font-weight: 600;
+        font-family: 'Montserrat', sans-serif;
+        transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .debate-input-form button:hover {
+        background: linear-gradient(90deg, #0056b3, #003d80);
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .deblings {
+        margin-top: 40px;
+        padding: 25px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(3px);
+    }
+
+    .deblings h3 {
+        font-size: 2rem;
+        color: #ffffff;
+        margin-bottom: 20px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .debate-turn {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        font-size: 1.1rem;
+        line-height: 1.7;
+        transition: box-shadow 0.3s ease;
+        color: #e0e0e0;
+    }
+
+    .debate-turn:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .debate-result {
+        margin-top: 40px;
+        padding: 25px;
+        background: rgba(230, 244, 234, 0.2);
+        border: 1px solid rgba(167, 215, 197, 0.4);
+        border-radius: 12px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(3px);
+        color: #e0e0e0;
+    }
+
+    .debate-result h3 {
+        font-size: 2rem;
+        color: #ffffff;
+        margin-bottom: 20px;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .download-links {
+        margin-top: 30px;
+        text-align: center;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    .download-links a {
+        color: #007bff;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding: 10px 20px;
+        border: 1px solid #007bff;
+        border-radius: 8px;
+        transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .download-links a:hover {
+        background: #007bff;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .alert-danger {
+        background: rgba(254, 226, 226, 0.2);
+        color: #ffffff;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        font-size: 1.1rem;
+        text-align: center;
+        border: 1px solid rgba(248, 113, 113, 0.4);
+        backdrop-filter: blur(3px);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .generation-date {
+        text-align: center;
+        margin-top: 30px;
+        color: #e0e0e0;
+        font-size: 1rem;
+        font-weight: 400;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Loading Icon Styles */
+    .loading-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+    }
+
+    .loading-spinner {
+        border: 5px solid rgba(255, 255, 255, 0.4);
+        border-top: 5px solid #007bff;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .debate-container {
+            margin: 30px;
+            padding: 25px;
+        }
+
+        .debate-container h1 {
+            font-size: 2.2rem;
+        }
+
+        .debate-input-form {
+            padding: 20px;
+        }
+
+        .debate-input-form button {
+            width: 100%;
+            padding: 12px;
+        }
+
+        .deblings h3,
+        .debate-result h3 {
+            font-size: 1.6rem;
+        }
+
+        .download-links {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .download-links a {
+            width: 100%;
+            text-align: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .debate-container {
+            margin: 15px;
+            padding: 15px;
+        }
+
+        .debate-container h1 {
+            font-size: 1.8rem;
+        }
+
+        .debate-input-form input,
+        .debate-input-form select {
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        .debate-input-form button {
+            font-size: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="debate-container">
+    <h1>Multi-Agent Debate</h1>
+    <p>Engage in a structured AI-driven debate on your chosen hypothesis, delivering clear arguments and a decisive judgment.</p>
+
+    <div class="debate-input-form">
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+        </div>
+        <form method="POST" action="{{ url_for('multi_agent_debate') }}" id="debateForm">
+            <div>
+                <label for="debate_topic">Debate Topic / Hypothesis (required)</label>
+                <input type="text" id="debate_topic" name="debate_topic" placeholder="e.g., Should AI be used in medical science?" required>
+            </div>
+            <div>
+                <label for="max_turns">Maximum Number of Debate Turns</label>
+                <select id="max_turns" name="max_turns">
+                    <option value="2">2</option>
+                    <option value="4">4</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="10" selected>10</option>
+                </select>
+            </div>
+            <button type="submit">Start Debate</button>
+        </form>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    {% if conversation %}
+        {% if conversation.greeting %}
+            <div class="deblings">
+                <h3>Debate Introduction</h3>
+                <p>{{ conversation.greeting }}</p>
+            </div>
+        {% endif %}
+
+        {% if conversation.history %}
+            <div class="deblings">
+                <h3>Debate History</h3>
+                {% for turn in conversation.history %}
+                    <div class="debate-turn">
+                        <p>{{ turn | safe }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if conversation.result %}
+            <div class="debate-result">
+                <h3>Debate Summary and Result</h3>
+                <p>{{ conversation.result | safe }}</p>
+            </div>
+        {% endif %}
+
+        {% if conversation.history or conversation.result %}
+            <div class="download-links">
+                <a href="{{ url_for('download_txt') }}">Download TXT</a>
+                <a href="{{ url_for('download_json') }}">Download JSON</a>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    {% if generation_date %}
+        <div class="generation-date">
+            <p>Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show loading overlay when the "Start Debate" button is clicked
+    document.getElementById('debateForm').addEventListener('submit', function(e) {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.style.display = 'flex';
+        // Smooth transition for overlay background
+        setTimeout(() => {
+            loadingOverlay.style.background = 'rgba(255, 255, 255, 0.4)';
+        }, 100);
+    });
+
+    // Hide loading overlay when the page loads (response received)
+    window.addEventListener('load', function() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        loadingOverlay.style.display = 'none';
+    });
+
+    // Handle download links to prevent default behavior for non-download links
+    document.querySelectorAll('.download-links a').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            if (!this.href.includes('download')) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+        });
+    });
+
+    // Add subtle animation to form inputs on focus
+    document.querySelectorAll('.debate-input-form input, .debate-input-form select').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.style.transform = 'scale(1.02)';
+        });
+        input.addEventListener('blur', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+</script>
+{% endblock %}

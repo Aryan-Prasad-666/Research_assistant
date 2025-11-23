@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+
+{% block title %}JñānaSetu.AI - Gap Finder{% endblock %}
+
+{% block extra_css %}
+<!-- Include Animate.css for animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+<style>
+    .gap-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .upload-section {
+        margin-bottom: 2.5rem;
+        text-align: center;
+    }
+
+    .upload-section input[type="file"] {
+        border: 2px dashed var(--secondary-color);
+        padding: 1.5rem;
+        border-radius: 10px;
+        background-color: var(--light-color);
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    .upload-section input[type="file"]:hover {
+        border-color: var(--accent-color);
+    }
+
+    .upload-section .btn-primary {
+        padding: 0.75rem 2rem;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .upload-section .btn-primary:hover {
+        background-color: #255560;
+        transform: translateY(-2px);
+    }
+
+    .loading-spinner {
+        display: none;
+        margin: 1rem auto;
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--secondary-color);
+        border-top: 4px solid var(--accent-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .result-section {
+        margin-top: 3rem;
+        padding: 1.5rem;
+        background-color: var(--light-color);
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .result-section h3 {
+        color: var(--primary-color);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
+    }
+
+    .result-box {
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        border-left: 5px solid var(--accent-color);
+        background-color: #fff;
+    }
+
+    .result-box h4 {
+        color: var(--secondary-color);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .result-box ul {
+        list-style-type: disc;
+        padding-left: 1.75rem;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .error-message {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+    }
+
+    .error-message i {
+        margin-right: 0.5rem;
+    }
+
+    .download-btn {
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        background-color: var(--secondary-color);
+        color: var(--light-color);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .download-btn:hover {
+        background-color: #255560;
+        transform: translateY(-2px);
+    }
+
+    .generated-date {
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+        text-align: center;
+        margin-top: 2rem;
+        font-style: italic;
+    }
+
+    .debug-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .gap-container {
+            padding: 1.5rem;
+            margin: 1rem;
+        }
+
+        .upload-section .btn-primary {
+            padding: 0.5rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        .result-section h3 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container gap-container">
+    <h1 class="text-center mb-4" data-translate="gap_finder_title">Gap Finder</h1>
+    <p class="text-center mb-5 lead" data-translate="gap_finder_description">Upload a PDF research paper or report to identify knowledge gaps, missing methodologies, unaddressed questions, or source limitations.</p>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            <div class="mb-4">
+                <label for="file" class="form-label fw-bold" data-translate="gap_finder_upload_label">Upload PDF Document</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".pdf" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="submitBtn" data-translate="gap_finder_submit">Find Gaps</button>
+            <div class="loading-spinner" id="loadingSpinner"></div>
+        </form>
+    </div>
+
+    <!-- Error Message -->
+    {% if error %}
+        <div class="error-message animate__animated animate__fadeIn">
+            <i class="fas fa-exclamation-circle"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    <!-- Debug Section -->
+    <div class="debug-section">
+        <h4>Debug Info</h4>
+        <p>Result object: {{ result | tojson | safe }}</p>
+        <p>Generation date: {{ generation_date | tojson | safe }}</p>
+    </div>
+
+    <!-- Result Section -->
+    {% if result %}
+        <div class="result-section animate__animated animate__fadeIn">
+            <h3 data-translate="gap_finder_gaps_title">Gap Analysis</h3>
+            <div class="result-box">
+                <h4 data-translate="gap_finder_methodological_gaps">Methodological Gaps</h4>
+                <ul>
+                    {% if result.gaps.methodological_gaps %}
+                        {% for gap in result.gaps.methodological_gaps %}
+                            <li>{{ gap.description | safe }} <br><strong>Suggestion:</strong> {{ gap.suggestion | safe }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>No methodological gaps identified.</li>
+                    {% endif %}
+                </ul>
+                <h4 data-translate="gap_finder_research_questions">Unaddressed Research Questions</h4>
+                <ul>
+                    {% if result.gaps.unaddressed_questions %}
+                        {% for question in result.gaps.unaddressed_questions %}
+                            <li>{{ question.description | safe }} <br><strong>Suggestion:</strong> {{ question.suggestion | safe }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>No unaddressed research questions identified.</li>
+                    {% endif %}
+                </ul>
+                <h4 data-translate="gap_finder_source_gaps">Source Gaps</h4>
+                <ul>
+                    {% if result.gaps.source_gaps %}
+                        {% for source_gap in result.gaps.source_gaps %}
+                            <li>{{ source_gap.description | safe }} <br><strong>Suggestion:</strong> {{ source_gap.suggestion | safe }}</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>No source gaps identified.</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            {% if result.document_id %}
+                <a href="/download/gaps/{{ result.document_id }}.json" class="btn btn-primary download-btn" data-translate="gap_finder_download" id="downloadBtn">Download Gap Analysis (JSON)</a>
+            {% endif %}
+        </div>
+
+        {% if generation_date %}
+            <p class="generated-date" data-translate="gap_finder_generated_on">Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add translations for gap finder page
+    const gapFinderTranslations = {
+        en: {
+            gap_finder_title: "Gap Finder",
+            gap_finder_description: "Upload a PDF research paper or report to identify knowledge gaps, missing methodologies, unaddressed questions, or source limitations.",
+            gap_finder_upload_label: "Upload PDF Document",
+            gap_finder_submit: "Find Gaps",
+            gap_finder_gaps_title: "Gap Analysis",
+            gap_finder_methodological_gaps: "Methodological Gaps",
+            gap_finder_research_questions: "Unaddressed Research Questions",
+            gap_finder_source_gaps: "Source Gaps",
+            gap_finder_download: "Download Gap Analysis (JSON)",
+            gap_finder_generated_on: "Generated on"
+        },
+        hi: {
+            gap_finder_title: "अंतर खोजक",
+            gap_finder_description: "ज्ञान अंतराल, लुप्त पद्धतियों, अनुत्तरित प्रश्नों या स्रोत सीमाओं की पहचान करने के लिए एक पीडीएफ शोध पत्र या रिपोर्ट अपलोड करें।",
+            gap_finder_upload_label: "पीडीएफ दस्तावेज अपलोड करें",
+            gap_finder_submit: "अंतर खोजें",
+            gap_finder_gaps_title: "अंतर विश्लेषण",
+            gap_finder_methodological_gaps: "पद्धति संबंधी अंतर",
+            gap_finder_research_questions: "अनुत्तरित शोध प्रश्न",
+            gap_finder_source_gaps: "स्रोत अंतर",
+            gap_finder_download: "अंतर विश्लेषण डाउनलोड करें (JSON)",
+            gap_finder_generated_on: "उत्पन्न किया गया"
+        },
+        kn: {
+            gap_finder_title: "ಗ್ಯಾಪ್ ಫೈಂಡರ್",
+            gap_finder_description: "ಜ್ಞಾನದ ಕೊರತೆಗಳು, ಕಾಣೆಯಾದ ವಿಧಾನಗಳು, ಉತ್ತರಿಸದ ಪ್ರಶ್ನೆಗಳು ಅಥವಾ ಮೂಲ ಸೀಮಿತತೆಗಳನ್ನು ಗುರುತಿಸಲು PDF ಸಂಶೋಧನಾ ಪತ್ರಿಕೆ ಅಥವಾ ವರದಿಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+            gap_finder_upload_label: "PDF ದಾಖಲೆಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+            gap_finder_submit: "ಗ್ಯಾಪ್‌ಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ",
+            gap_finder_gaps_title: "ಗ್ಯಾಪ್ ವಿಶ್ಲೇಷಣೆ",
+            gap_finder_methodological_gaps: "ವಿಧಾನಗತ ಕೊರತೆಗಳು",
+            gap_finder_research_questions: "ಉತ್ತರಿಸದ ಸಂಶೋಧನಾ ಪ್ರಶ್ನೆಗಳು",
+            gap_finder_source_gaps: "ಮೂಲ ಕೊರತೆಗಳು",
+            gap_finder_download: "ಗ್ಯಾಪ್ ವಿಶ್ಲೇಷಣೆ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ (JSON)",
+            gap_finder_generated_on: "ರಚಿಸಲಾದ"
+        }
+    };
+
+    // Merge gap finder translations into main translations object
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check if translations object exists
+        if (typeof translations === 'undefined') {
+            console.error('Translations object is undefined. Ensure base.html defines it.');
+            return;
+        }
+
+        Object.keys(gapFinderTranslations).forEach(lang => {
+            translations[lang] = { ...translations[lang], ...gapFinderTranslations[lang] };
+        });
+
+        // Check if getCurrentLanguage and updateContent are defined
+        if (typeof getCurrentLanguage === 'undefined' || typeof updateContent === 'undefined') {
+            console.error('getCurrentLanguage or updateContent function is undefined. Ensure base.html defines them.');
+            return;
+        }
+
+        const currentLang = getCurrentLanguage();
+        updateContent(currentLang);
+
+        const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('loadingSpinner');
+        const errorContainer = document.querySelector('.gap-container');
+        const resultSection = document.querySelector('.result-section') || document.createElement('div');
+
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                submitBtn.disabled = true;
+                submitBtn.textContent = translations[currentLang].gap_finder_submit.replace('Find Gaps', 'Processing...');
+                spinner.style.display = 'block';
+
+                const formData = new FormData(form);
+                try {
+                    const response = await fetch('/gap_finder', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Response data:', data);
+
+                    // Update result section dynamically
+                    if (data.result && data.result.gaps) {
+                        resultSection.innerHTML = `
+                            <h3 data-translate="gap_finder_gaps_title">Gap Analysis</h3>
+                            <div class="result-box">
+                                <h4 data-translate="gap_finder_methodological_gaps">Methodological Gaps</h4>
+                                <ul>
+                                    ${data.result.gaps.methodological_gaps.length ? 
+                                        data.result.gaps.methodological_gaps.map(gap => 
+                                            `<li>${gap.description} <br><strong>Suggestion:</strong> ${gap.suggestion}</li>`
+                                        ).join('') : 
+                                        '<li>No methodological gaps identified.</li>'}
+                                </ul>
+                                <h4 data-translate="gap_finder_research_questions">Unaddressed Research Questions</h4>
+                                <ul>
+                                    ${data.result.gaps.unaddressed_questions.length ? 
+                                        data.result.gaps.unaddressed_questions.map(question => 
+                                            `<li>${question.description} <br><strong>Suggestion:</strong> ${question.suggestion}</li>`
+                                        ).join('') : 
+                                        '<li>No unaddressed research questions identified.</li>'}
+                                </ul>
+                                <h4 data-translate="gap_finder_source_gaps">Source Gaps</h4>
+                                <ul>
+                                    ${data.result.gaps.source_gaps.length ? 
+                                        data.result.gaps.source_gaps.map(source_gap => 
+                                            `<li>${source_gap.description} <br><strong>Suggestion:</strong> ${source_gap.suggestion}</li>`
+                                        ).join('') : 
+                                        '<li>No source gaps identified.</li>'}
+                                </ul>
+                            </div>
+                            ${data.result.document_id ? 
+                                `<a href="/download/gaps/${data.result.document_id}.json" class="btn btn-primary download-btn" data-translate="gap_finder_download">Download Gap Analysis (JSON)</a>` : ''}
+                        `;
+                        resultSection.className = 'result-section animate__animated animate__fadeIn';
+                        errorContainer.appendChild(resultSection);
+                        updateContent(currentLang); // Reapply translations
+                    }
+
+                    if (data.generation_date) {
+                        const dateDiv = document.createElement('p');
+                        dateDiv.className = 'generated-date';
+                        dateDiv.setAttribute('data-translate', 'gap_finder_generated_on');
+                        dateDiv.textContent = `Generated on: ${new Date(data.generation_date).toLocaleString()}`;
+                        errorContainer.appendChild(dateDiv);
+                        updateContent(currentLang);
+                    }
+
+                    spinner.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = translations[currentLang].gap_finder_submit || 'Find Gaps';
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    spinner.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = translations[currentLang].gap_finder_submit || 'Find Gaps';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error-message animate__animated animate__fadeIn';
+                    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i>Failed to process PDF: ${error.message}`;
+                    errorContainer.insertBefore(errorDiv, form.parentElement);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

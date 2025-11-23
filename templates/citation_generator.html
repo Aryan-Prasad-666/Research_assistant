@@ -1,0 +1,600 @@
+{% extends 'base.html' %}
+
+{% block title %}JñānaSetu.AI - Citation Generator{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --dark-color: #1e2a44;
+        --light-color: #ffffff;
+        --accent-color: #f4a261;
+        --secondary-color: #2a9d8f;
+    }
+
+    .citation-section {
+        padding: 100px 0;
+        background: url('https://images.pexels.com/photos/590041/pexels-photo-590041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center/cover;
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        animation: fadeIn 1.5s ease-out;
+    }
+
+    .citation-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(180deg, rgba(30, 42, 68, 0.75), rgba(30, 42, 68, 0.9));
+    }
+
+    .citation-container {
+        position: relative;
+        z-index: 1;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 30px;
+    }
+
+    .citation-section h2 {
+        font-size: 48px;
+        font-weight: 900;
+        margin-bottom: 10px;
+        color: var(--light-color);
+        text-transform: uppercase;
+        text-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        text-align: center;
+        letter-spacing: 1.5px;
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+        position: relative;
+    }
+
+    .citation-section h2::after {
+        content: '';
+        display: block;
+        width: 100px;
+        height: 3px;
+        background: var(--accent-color);
+        margin: 10px auto;
+        border-radius: 2px;
+    }
+
+    .citation-section p {
+        font-size: 18px;
+        line-height: 1.8;
+        max-width: 900px;
+        margin: 0 auto 50px;
+        color: var(--light-color);
+        text-align: center;
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+    }
+
+    .form-container {
+        background: linear-gradient(145deg, #ffffff, #f5f5f5);
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
+        max-width: 800px;
+        margin: 0 auto 60px;
+        border: 2px solid var(--accent-color);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-container:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 6px 18px rgba(0, 0, 0, 0.15);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .form-grid > div {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-grid .full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-container input, .form-container textarea, .form-container select {
+        width: 100%;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid var(--secondary-color);
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        background: #fff;
+    }
+
+    .form-container textarea {
+        min-height: 140px;
+        resize: vertical;
+    }
+
+    .form-container input:focus, .form-container textarea:focus, .form-container select:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(244, 162, 97, 0.4);
+        outline: none;
+    }
+
+    .form-container label {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--dark-color);
+        margin-bottom: 8px;
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+    }
+
+    .form-container button {
+        background: linear-gradient(45deg, var(--accent-color), #e38944);
+        color: var(--dark-color);
+        padding: 15px 60px;
+        border: none;
+        border-radius: 50px;
+        font-size: 18px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 8px 20px rgba(244, 162, 97, 0.6);
+        display: block;
+        margin: 30px auto;
+    }
+
+    .form-container button:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(244, 162, 97, 0.8);
+    }
+
+    .error-message {
+        color: #d9534f;
+        font-size: 17px;
+        font-weight: 700;
+        margin: 25px 0;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        border-radius: 10px;
+        border: 2px solid #d9534f;
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+    }
+
+    .citation-results {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 35px;
+        padding: 0 30px;
+        margin-top: 50px;
+    }
+
+    .citation-card {
+        background: linear-gradient(145deg, #ffffff, #f5f5f5);
+        padding: 35px;
+        border-radius: 15px;
+        border: 2px solid var(--accent-color);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
+        font-family: 'Georgia', 'Times New Roman', Times, serif;
+        position: relative;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .citation-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25), 0 6px 18px rgba(0, 0, 0, 0.15);
+    }
+
+    .citation-card::before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: linear-gradient(90deg, var(--accent-color), #e38944);
+    }
+
+    .citation-card::after {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        border-radius: 10px;
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        z-index: -1;
+    }
+
+    .citation-card .citation-number {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--secondary-color);
+    }
+
+    .citation-card h3 {
+        font-size: 24px;
+        font-weight: 800;
+        margin-bottom: 25px;
+        color: var(--dark-color);
+        line-height: 1.4;
+        padding-left: 40px;
+    }
+
+    .citation-card .citation-field {
+        margin-bottom: 18px;
+        font-size: 17px;
+        line-height: 1.8;
+        color: #333;
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .citation-card .citation-field label {
+        font-weight: 700;
+        color: var(--dark-color);
+        min-width: 120px;
+        margin-right: 15px;
+    }
+
+    .citation-card .citation-field span {
+        color: #333;
+        word-wrap: break-word;
+        flex: 1;
+    }
+
+    .citation-card .download-links {
+        margin-top: 25px;
+        text-align: right;
+    }
+
+    .citation-card .download-links a {
+        display: inline-block;
+        padding: 12px 25px;
+        background: var(--secondary-color);
+        color: var(--light-color);
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 700;
+        border-radius: 8px;
+        transition: background 0.3s ease, transform 0.3s ease;
+    }
+
+    .citation-card .download-links a:hover {
+        background: var(--accent-color);
+        transform: translateY(-3px);
+    }
+
+    .citation-card .error {
+        color: #d9534f;
+        font-size: 17px;
+        font-weight: 700;
+        text-align: left;
+        padding: 12px;
+        border-left: 5px solid #d9534f;
+        margin-bottom: 18px;
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.95);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .spinner {
+        border: 8px solid var(--light-color);
+        border-top: 8px solid var(--accent-color);
+        border-radius: 50%;
+        width: 80px;
+        height: 80px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .citation-section {
+            padding: 60px 0;
+        }
+
+        .citation-section h2 {
+            font-size: 38px;
+        }
+
+        .citation-section p {
+            font-size: 16px;
+        }
+
+        .form-container {
+            padding: 30px;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .form-container input, .form-container textarea, .form-container select {
+            font-size: 15px;
+        }
+
+        .form-container button {
+            padding: 12px 50px;
+            font-size: 17px;
+        }
+
+        .citation-results {
+            grid-template-columns: 1fr;
+            gap: 25px;
+            padding: 0 20px;
+        }
+
+        .citation-card {
+            padding: 25px;
+        }
+
+        .citation-card h3 {
+            font-size: 22px;
+            padding-left: 30px;
+        }
+
+        .citation-card .citation-number {
+            font-size: 16px;
+            top: 15px;
+            left: 15px;
+        }
+
+        .citation-card .citation-field {
+            font-size: 15px;
+        }
+
+        .citation-card .citation-field label {
+            min-width: 100px;
+        }
+
+        .citation-card .download-links a {
+            font-size: 15px;
+            padding: 10px 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="citation-section">
+    <div class="citation-container">
+        <h2>Citation Generator</h2>
+        <p>Generate accurate citations for your research claims. Enter a claim and optional filters to find relevant sources.</p>
+
+        <div class="form-container">
+            <form id="citation-form" method="POST" action="{{ url_for('citation_generator_route') }}">
+                <div class="form-grid">
+                    <div class="full-width">
+                        <label for="claim">Text/Claim (required)</label>
+                        <textarea id="claim" name="claim" rows="4" required placeholder="e.g., 'Deep learning improves diagnostic accuracy in medical imaging' or 'Quantum computing advancements in cryptography' or 'Climate change impacts on coastal ecosystems'"></textarea>
+                    </div>
+                    <div>
+                        <label for="keywords">Research Topic / Keywords (optional)</label>
+                        <input type="text" id="keywords" name="keywords" placeholder="e.g., deep learning, medical imaging, peer-reviewed">
+                    </div>
+                    <div>
+                        <label for="citation_style">Preferred Citation Style</label>
+                        <select id="citation_style" name="citation_style">
+                            <option value="APA">APA</option>
+                            <option value="MLA">MLA</option>
+                            <option value="IEEE">IEEE</option>
+                            <option value="Chicago">Chicago</option>
+                            <option value="All Styles" selected>All Styles</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="max_citations">Maximum Number of Citations</label>
+                        <select id="max_citations" name="max_citations">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="source_type">Source Type (optional)</label>
+                        <select id="source_type" name="source_type">
+                            <option value="All" selected>All</option>
+                            <option value="Journals">Journals</option>
+                            <option value="Conferences">Conferences</option>
+                            <option value="Preprints">Preprints</option>
+                            <option value="Patents">Patents</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="year_start">Year Range (optional)</label>
+                        <input type="number" id="year_start" name="year_start" placeholder="From (e.g., 2010)" min="1900" max="{{ current_year }}">
+                    </div>
+                    <div>
+                        <label for="year_end">&nbsp;</label>
+                        <input type="number" id="year_end" name="year_end" placeholder="To (e.g., 2025)" min="1900" max="{{ current_year }}">
+                    </div>
+                </div>
+                <button type="submit">Generate Citations</button>
+            </form>
+        </div>
+
+        {% if error %}
+            <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        {% if result.citations %}
+            <div class="citation-results">
+                {% for citation in result.citations %}
+                    <div class="citation-card">
+                        {% if citation.error %}
+                            <p class="error">{{ citation.error }}</p>
+                        {% else %}
+                            <span class="citation-number">[{{ loop.index }}]</span>
+                            <h3>{{ citation.title }}</h3>
+                            <div class="citation-field">
+                                <label>Author:</label>
+                                <span>{{ citation.author }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Title:</label>
+                                <span>{{ citation.title }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Journal:</label>
+                                <span>{{ citation.journal }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Volume:</label>
+                                <span>{{ citation.volume }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Issue:</label>
+                                <span>{{ citation.issue }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Pages:</label>
+                                <span>{{ citation.pages }}</span>
+                            </div>
+                            <div class="citation-field">
+                                <label>Year:</label>
+                                <span>{{ citation.year }}</span>
+                            </div>
+                            {% if citation.doi %}
+                                <div class="citation-field">
+                                    <label>DOI:</label>
+                                    <span>{{ citation.doi }}</span>
+                                </div>
+                            {% endif %}
+                            <div class="citation-field">
+                                <label>Citation:</label>
+                                <span>{{ citation.citation }}</span>
+                            </div>
+                            <div class="download-links">
+                                <a href="data:text/plain;charset=utf-8,{{ citation.citation | urlencode }}" 
+                                   download="{{ citation.title | truncate(50, true, '...') }}.txt">Download Citation</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if generation_date %}
+            <p class="generation-date" style="text-align: center; color: var(--light-color); font-family: 'Georgia', 'Times New Roman', Times, serif; font-size: 17px; margin-top: 50px;">
+                Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}
+            </p>
+        {% endif %}
+    </div>
+</section>
+
+<div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Set current year for year range inputs
+    document.addEventListener('DOMContentLoaded', function() {
+        const yearInputs = document.querySelectorAll('input[type="number"][name="year_start"], input[type="number"][name="year_end"]');
+        const currentYear = new Date().getFullYear();
+        yearInputs.forEach(input => {
+            input.setAttribute('max', currentYear);
+        });
+    });
+
+    // Show loading spinner on form submit and validate inputs
+    document.getElementById('citation-form').addEventListener('submit', (event) => {
+        const claim = document.getElementById('claim').value.trim();
+        const yearStart = document.getElementById('year_start').value.trim();
+        const yearEnd = document.getElementById('year_end').value.trim();
+
+        // Validate claim
+        if (!claim) {
+            event.preventDefault();
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert('Please provide a text or claim.');
+            return;
+        }
+
+        // Validate year range
+        if (yearStart && !/^\d{4}$/.test(yearStart)) {
+            event.preventDefault();
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert('Year From must be a valid 4-digit year (e.g., 2010).');
+            return;
+        }
+
+        if (yearEnd && !/^\d{4}$/.test(yearEnd)) {
+            event.preventDefault();
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert('Year To must be a valid 4-digit year (e.g., 2025).');
+            return;
+        }
+
+        if (yearStart && yearEnd && parseInt(yearStart) > parseInt(yearEnd)) {
+            event.preventDefault();
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert('Year From must be less than or equal to Year To.');
+            return;
+        }
+
+        document.getElementById('loading-overlay').style.display = 'flex';
+    });
+
+    // Animate elements on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animation = 'fadeInUp 1s ease-out forwards';
+            }
+        });
+    }, { threshold: 0.2 });
+
+    document.querySelectorAll('.citation-card, .citation-section h2, .citation-section p, .form-container').forEach(el => {
+        observer.observe(el);
+    });
+</script>
+{% endblock %}

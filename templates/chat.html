@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Research Chatbot - JñānaSetu.AI{% endblock %}</title>
+    <!-- Poppins Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1E2A44; /* Deep Navy Blue - scholarly trust */
+            --secondary-color: #2E6A7A; /* Teal - innovation and clarity */
+            --accent-color: #F4A261; /* Warm Orange - creativity and enthusiasm */
+            --light-color: #F5F7FA; /* Soft Gray-White - clean readability */
+            --dark-color: #0F172A; /* Dark Slate - contrast and stability */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+        }
+
+        /* Hero Section for Chatbot Page */
+        .hero {
+            height: 60vh;
+            background: url('https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center/cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(30, 42, 68, 0.6), rgba(30, 42, 68, 0.8));
+        }
+
+        .hero-content {
+            position: relative;
+            max-width: 800px;
+            padding: 20px;
+            animation: fadeInUp 1.2s ease-out;
+        }
+
+        .hero-content h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(244, 162, 97, 0.5);
+        }
+
+        .hero-content p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: var(--light-color);
+        }
+
+        /* Chat Container */
+        .chat-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: -50px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: var(--light-color);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .chat-header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .chat-messages {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: var(--light-color);
+            scroll-behavior: smooth;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+            animation-delay: 0.1s;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+            animation-delay: 0.2s;
+        }
+
+        .message .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+
+        .user .avatar {
+            background: var(--accent-color);
+            color: var(--dark-color);
+        }
+
+        .ai .avatar {
+            background: var(--secondary-color);
+            color: var(--light-color);
+        }
+
+        .message .bubble {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .user .bubble {
+            background: var(--accent-color);
+            color: var(--dark-color);
+            border-bottom-right-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .ai .bubble {
+            background: #fff;
+            color: var(--dark-color);
+            border: 1px solid var(--secondary-color);
+            border-bottom-left-radius: 5px;
+            margin-left: 10px;
+        }
+
+        .bubble:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Input Area */
+        .input-area {
+            display: flex;
+            padding: 20px;
+            background: #fff;
+            border-top: 1px solid var(--secondary-color);
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid var(--secondary-color);
+            border-radius: 25px;
+            background: var(--light-color);
+            color: var(--dark-color);
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        #messageInput::placeholder {
+            color: var(--secondary-color);
+        }
+
+        #messageInput:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(244, 162, 97, 0.1);
+        }
+
+        #sendBtn {
+            margin-left: 10px;
+            background: linear-gradient(135deg, var(--accent-color), #e38944);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            color: var(--dark-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+
+        #sendBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 162, 97, 0.4);
+        }
+
+        #sendBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: var(--secondary-color);
+            font-style: italic;
+        }
+
+        .loading.show {
+            display: block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .typing-indicator {
+            display: none;
+            position: absolute;
+            bottom: -5px;
+            right: 10px;
+        }
+
+        .typing-indicator.show {
+            display: block;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                height: 50vh;
+            }
+
+            .hero-content h1 {
+                font-size: 32px;
+            }
+
+            .hero-content p {
+                font-size: 16px;
+            }
+
+            .chat-messages {
+                height: 400px;
+                padding: 15px;
+            }
+
+            .message .bubble {
+                max-width: 85%;
+                font-size: 13px;
+            }
+
+            .input-area {
+                padding: 15px;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation (from base.html) -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>JñānaSetu.AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" data-translate="nav_home">Home</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="researchToolsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-translate="nav_research_tools">Research Tools</a>
+                        <ul class="dropdown-menu" aria-labelledby="researchToolsDropdown">
+                            <li><a class="dropdown-item" href="/citation_generator" data-translate="nav_citation_generator">Citation Generator</a></li>
+                            <li><a class="dropdown-item" href="/gap_finder" data-translate="nav_gap_finder">Gap Finder</a></li>
+                            <li><a class="dropdown-item" href="/flowchart_generator" data-translate="nav_flowchart_generator">Flowchart Generator</a></li>
+                            <li><a class="dropdown-item" href="/summarizer" data-translate="nav_summarizer">Auto-Summarizer</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="analysisDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-translate="nav_analysis">Analysis</a>
+                        <ul class="dropdown-menu" aria-labelledby="analysisDropdown">
+                            <li><a class="dropdown-item" href="/hypothesis_validator" data-translate="nav_hypothesis_validator">Hypothesis Validator</a></li>
+                            <li><a class="dropdown-item" href="/patent_analyzer" data-translate="nav_patent_analyzer">Patent Analyzer</a></li>
+                            <li><a class="dropdown-item" href="/dataset_explorer" data-translate="nav_dataset_explorer">Dataset Explorer</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/chatbot" data-translate="nav_chatbot">Research Chatbot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/debate" data-translate="nav_debate">Multi-Agent Debate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about" data-translate="nav_about">About Us</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe me-1"></i><span data-translate="nav_language">Language</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                            <li><a class="dropdown-item" href="?lang=en" data-lang="en" data-translate="lang_en">English</a></li>
+                            <li><a class="dropdown-item" href="?lang=hi" data-lang="hi" data-translate="lang_hi">हिंदी (Hindi)</a></li>
+                            <li><a class="dropdown-item" href="?lang=kn" data-lang="kn" data-translate="lang_kn">ಕನ್ನಡ (Kannada)</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}
+        <div class="hero">
+            <div class="hero-content">
+                <h1 data-translate="chatbot_hero_title">Research Chatbot</h1>
+                <p data-translate="chatbot_hero_description">Engage with an intelligent AI assistant that remembers your research context, provides tailored insights, and structures responses for maximum clarity and depth.</p>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2><i class="fas fa-robot me-2"></i>AI Research Companion</h2>
+                <p data-translate="chatbot_header_subtitle">Ask anything—I'll draw from our shared knowledge to assist your inquiry.</p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai">
+                    <div class="avatar"><i class="fas fa-robot"></i></div>
+                    <div class="bubble">
+                        <i class="fas fa-lightbulb me-2" style="color: var(--secondary-color);"></i>
+                        <span data-translate="chatbot_welcome">Hello, researcher! I'm here to help with your queries. Try asking: "Summarize recent advances in quantum computing" or "What gaps exist in AI ethics literature?"</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Enter your research query..." onkeypress="if(event.key==='Enter') sendMessage();" maxlength="1000">
+                <button id="sendBtn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane me-1"></i>Send
+                </button>
+            </div>
+            
+            <div class="loading" id="loading">
+                <i class="fas fa-brain me-2"></i><span data-translate="chatbot_loading">Analyzing your query...</span>
+                <div class="typing-indicator" id="typing">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endblock %}
+    </main>
+
+    <!-- Footer (from base.html) -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_jnana_setu">JñānaSetu.AI</h5>
+                    <p data-translate="footer_description">Empowering researchers with AI-driven tools for citation, analysis, and collaboration, fostering innovation and discovery.</p>
+                    <div class="social-icons mt-4">
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_services">Services</h5>
+                    <ul class="footer-links">
+                        <li><a href="/citation_generator" data-translate="footer_citation_generator">Citation Generator</a></li>
+                        <li><a href="/gap_finder" data-translate="footer_gap_finder">Gap Finder</a></li>
+                        <li><a class="dropdown-item" href="/flowchart_generator" data-translate="footer_flowchart_generator">Flowchart Generator</a></li>
+                        <li><a href="/summarizer" data-translate="footer_summarizer">Auto-Summarizer</a></li>
+                        <li><a href="/hypothesis_validator" data-translate="footer_hypothesis_validator">Hypothesis Validator</a></li>
+                        <li><a href="/patent_analyzer" data-translate="footer_patent_analyzer">Patent Analyzer</a></li>
+                        <li><a href="/dataset_explorer" data-translate="footer_dataset_explorer">Dataset Explorer</a></li>
+                        <li><a href="/chatbot" data-translate="footer_chatbot">Research Chatbot</a></li>
+                        <li><a href="/debate" data-translate="footer_debate">Multi-Agent Debate</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_company">Company</h5>
+                    <ul class="footer-links">
+                        <li><a href="/about" data-translate="footer_about">About Us</a></li>
+                        <li><a href="/mission" data-translate="footer_mission">Our Mission</a></li>
+                        <li><a href="/impact" data-translate="footer_impact">Impact Stories</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_contact_us">Contact Us</h5>
+                    <p><i class="fas fa-map-marker-alt me-2"></i><span data-translate="footer_address">123 Innovation Hub, Bengaluru, Karnataka, India</span></p>
+                    <p><i class="fas fa-phone me-2"></i><span data-translate="footer_phone">+91 9876543210</span></p>
+                    <p><i class="fas fa-envelope me-2"></i><a href="mailto:support@jnanasetu.ai" data-translate="footer_email">support@jnanasetu.ai</a></p>
+                    <div class="mt-3">
+                        <select class="form-select form-select-sm language-selector" id="footer-language" aria-label="Language selector">
+                            <option value="en" data-translate="lang_en">English</option>
+                            <option value="hi" data-translate="lang_hi">हिंदी (Hindi)</option>
+                            <option value="kn" data-translate="lang_kn">ಕನ್ನಡ (Kannada)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <hr class="mt-4 mb-4" style="border-color: rgba(255, 255, 255, 0.1);">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p data-translate="footer_copyright">© 2025 JñānaSetu.AI. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <a href="/privacy" class="me-3" data-translate="footer_privacy">Privacy Policy</a>
+                    <a href="/terms" class="me-3" data-translate="footer_terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Language Switcher Script (from base.html) -->
+    <script>
+        // Translation object (extended for chatbot page)
+        const translations = {
+            en: {
+                // Existing translations from base.html...
+                nav_home: "Home",
+                // ... (include all from base.html en)
+                chatbot_hero_title: "Research Chatbot",
+                chatbot_hero_description: "Engage with an intelligent AI assistant that remembers your research context, provides tailored insights, and structures responses for maximum clarity and depth.",
+                chatbot_header_subtitle: "Ask anything—I'll draw from our shared knowledge to assist your inquiry.",
+                chatbot_welcome: "Hello, researcher! I'm here to help with your queries. Try asking: \"Summarize recent advances in quantum computing\" or \"What gaps exist in AI ethics literature?\"",
+                chatbot_loading: "Analyzing your query..."
+            },
+            hi: {
+                // Existing from base.html...
+                chatbot_hero_title: "शोध चैटबॉट",
+                chatbot_hero_description: "एक बुद्धिमान एआई सहायक के साथ संलग्न हों जो आपके शोध संदर्भ को याद रखता है, अनुकूलित अंतर्दृष्टि प्रदान करता है, और अधिकतम स्पष्टता और गहराई के लिए प्रतिक्रियाओं को संरचित करता है।",
+                chatbot_header_subtitle: "कुछ भी पूछें—मैं हमारी साझा ज्ञान से आपकी पूछताछ में सहायता करूंगा।",
+                chatbot_welcome: "नमस्ते, शोधकर्ता! मैं आपकी पूछताछ में मदद करने के लिए यहां हूं। आजमाएं: \"क्वांटम कम्प्यूटिंग में हाल की प्रगति का सारांश दें\" या \"एआई नैतिकता साहित्य में क्या अंतर हैं?\"",
+                chatbot_loading: "आपकी पूछताछ का विश्लेषण कर रहा हूं..."
+            },
+            kn: {
+                // Existing from base.html...
+                chatbot_hero_title: "ಸಂಶೋಧನಾ ಚಾಟ್‌ಬಾಟ್",
+                chatbot_hero_description: "ನಿಮ್ಮ ಸಂಶೋಧನಾ ಸಂದರ್ಭವನ್ನು ನೆನಪಿನಲ್ಲಿಟ್ಟುಕೊಂಡಿರುವ ಬುದ್ಧಿವಂತ AI ಸಹಾಯಕನೊಂದಿಗೆ ತೊಡಗಿಕೊಳ್ಳಿ, ಅನುಕೂಲಕ್ಕೆ ಹೊಂದಿಕೊಳ್ಳುವ ಒಳನೋಟಗಳನ್ನು ನೀಡುತ್ತದೆ ಮತ್ತು ಅತ್ಯಂತ ಸ್ಪಷ್ಟತೆ ಮತ್ತು ಆಳಕ್ಕಾಗಿ ಪ್ರತಿಕ್ರಿಯೆಗಳನ್ನು ರಚಿಸುತ್ತದೆ.",
+                chatbot_header_subtitle: "ಏನಾದರೂ ಕೇಳಿ—ನಾನು ನಮ್ಮ ಹಂಚಿಕೊಂಡ ಜ್ಞಾನದಿಂದ ನಿಮ್ಮ ಪ್ರಶ್ನೆಗೆ ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.",
+                chatbot_welcome: "ನಮಸ್ಕಾರ, ಸಂಶೋಧಕ! ನಾನು ನಿಮ್ಮ ಪ್ರಶ್ನೆಗಳಿಗೆ ಸಹಾಯ ಮಾಡಲು ಇಲ್ಲಿದ್ದೇನೆ. ಪ್ರಯತ್ನಿಸಿ: \"ಕ್ವಾಂಟಮ್ ಕಂಪ್ಯೂಟಿಂಗ್‌ನಲ್ಲಿ ಇತ್ತೀಚಿನ ಪ್ರಗತಿಯನ್ನು ಸಾರಾಂಶಿಸಿ\" ಅಥವಾ \"ಎಐ ನೈತಿಕತೆ ಸಾಹಿತ್ಯದಲ್ಲಿ ಯಾವ ಗ್ಯಾಪ್‌ಗಳಿವೆ?\"",
+                chatbot_loading: "ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ವಿಶ್ಲೇಷಿಸುತ್ತಿದ್ದೇನೆ..."
+            }
+        };
+
+        // Function to get the current language from URL
+        function getCurrentLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('lang') || 'en'; // Default to English
+        }
+
+        // Function to update content based on language
+        function updateContent(lang) {
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+            // Update language selectors
+            document.querySelectorAll('.language-selector').forEach(select => {
+                select.value = lang;
+            });
+        }
+
+        // Initialize content based on URL language
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentLang = getCurrentLanguage();
+            updateContent(currentLang);
+
+            // Handle navbar dropdown language change
+            document.querySelectorAll('.dropdown-menu [data-lang]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const lang = item.getAttribute('data-lang');
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('lang', lang);
+                    window.location.href = newUrl; // Reload page to apply translations
+                });
+            });
+
+            // Handle footer language selector
+            const footerSelect = document.getElementById('footer-language');
+            if (footerSelect) {
+                footerSelect.addEventListener('change', (e) => {
+                    const lang = e.target.value;
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('lang', lang);
+                    window.location.href = newUrl; // Reload page to apply translations
+                });
+            }
+        });
+    </script>
+
+    {% block scripts %}
+    <script>
+        // Typing Effect for AI Responses
+        function typeResponse(element, text, speed = 20) {
+            element.innerHTML = '';
+            let i = 0;
+            const timer = setInterval(() => {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(timer);
+                    document.getElementById('typing').classList.remove('show');
+                }
+            }, speed);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const btn = document.getElementById('sendBtn');
+            const messages = document.getElementById('chatMessages');
+            const loading = document.getElementById('loading');
+            const typing = document.getElementById('typing');
+
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Add user message with animation
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user';
+            userMsg.innerHTML = `
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <div class="bubble">${message}</div>
+            `;
+            messages.appendChild(userMsg);
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+
+            // Show loading & typing
+            btn.disabled = true;
+            loading.classList.add('show');
+            typing.classList.add('show');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+                loading.classList.remove('show');
+                if (response.ok) {
+                    // Add AI response with typing effect
+                    const aiMsg = document.createElement('div');
+                    aiMsg.className = 'message ai';
+                    aiMsg.innerHTML = `
+                        <div class="avatar"><i class="fas fa-robot"></i></div>
+                        <div class="bubble" id="responseBubble"></div>
+                    `;
+                    messages.appendChild(aiMsg);
+                    const bubble = document.getElementById('responseBubble');
+                    typeResponse(bubble, data.response);
+                    messages.scrollTop = messages.scrollHeight;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                loading.classList.remove('show');
+                typing.classList.remove('show');
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'message ai';
+                errorMsg.innerHTML = `
+                    <div class="avatar"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="bubble">⚠️ An error occurred: ${error.message}. Please try again.</div>
+                `;
+                messages.appendChild(errorMsg);
+                messages.scrollTop = messages.scrollHeight;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Auto-focus input
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('messageInput').focus();
+        });
+    </script>
+    {% endblock %}
+</body>
+</html>

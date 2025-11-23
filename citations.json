@@ -1,0 +1,41 @@
+[
+  {
+    "name": "Advancements in superconducting quantum computing",
+    "citation": "Jiang, H., & Deng, M. (2024). Advancements in superconducting quantum computing. National Science Review, 12(8), nwaf246. https://doi.org/10.1093/nsr/nwaf246",
+    "author": "Jiang, H., & Deng, M.",
+    "title": "Advancements in superconducting quantum computing",
+    "journal": "National Science Review",
+    "volume": "12",
+    "issue": "8",
+    "pages": "nwaf246",
+    "year": "2024",
+    "doi": "10.1093/nsr/nwaf246",
+    "error": null
+  },
+  {
+    "name": "Superconducting quantum computers: who is leading the future?",
+    "citation": "AbuGhanem, M., et al. (2025). Superconducting quantum computers: who is leading the future? EPJ Quantum Technology, 12(1), 102. https://doi.org/10.1140/epjqt/s40507-025-00405-7",
+    "author": "AbuGhanem, M., et al.",
+    "title": "Superconducting quantum computers: who is leading the future?",
+    "journal": "EPJ Quantum Technology",
+    "volume": "12",
+    "issue": "1",
+    "pages": "102",
+    "year": "2025",
+    "doi": "10.1140/epjqt/s40507-025-00405-7",
+    "error": null
+  },
+  {
+    "name": "Quantum computing requires high-performance software",
+    "citation": "Chow, J. M. (2025). Quantum computing requires high-performance software. Science, 387(6732), 1228-1229. https://doi.org/10.1126/science.adt0019",
+    "author": "Chow, J. M.",
+    "title": "Quantum computing requires high-performance software",
+    "journal": "Science",
+    "volume": "387",
+    "issue": "6732",
+    "pages": "1228-1229",
+    "year": "2025",
+    "doi": "10.1126/science.adt0019",
+    "error": null
+  }
+]

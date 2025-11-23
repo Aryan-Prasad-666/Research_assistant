@@ -1,0 +1,6 @@
+.env
+backup
+static
+images
+db
+vector_db

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}JñānaSetu.AI - Empowering Research{% endblock %}</title>
+    <!-- Poppins Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1E2A44; /* Deep Navy Blue - scholarly trust */
+            --secondary-color: #2E6A7A; /* Teal - innovation and clarity */
+            --accent-color: #F4A261; /* Warm Orange - creativity and enthusiasm */
+            --light-color: #F5F7FA; /* Soft Gray-White - clean readability */
+            --dark-color: #0F172A; /* Dark Slate - contrast and stability */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+        }
+
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--accent-color) !important;
+            text-shadow: 0 0 8px rgba(244, 162, 97, 0.4);
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.85) !important;
+            font-weight: 500;
+            margin: 0 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--accent-color) !important;
+            transform: translateY(-2px);
+        }
+
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: var(--light-color);
+        }
+
+        .dropdown-item {
+            color: var(--dark-color);
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--secondary-color);
+            color: var(--light-color);
+        }
+
+        .btn-primary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #255560;
+            border-color: #255560;
+        }
+
+        .btn-outline-primary {
+            color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--secondary-color);
+            color: var(--light-color);
+        }
+
+        .accent-text {
+            color: var(--accent-color);
+        }
+
+        .bg-accent {
+            background-color: var(--accent-color);
+        }
+
+        .footer {
+            background-color: var(--primary-color);
+            color: var(--light-color);
+            padding: 3rem 0;
+        }
+
+        .footer a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: var(--accent-color);
+        }
+
+        .footer-heading {
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        .footer-links {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.75rem;
+        }
+
+        .social-icons a {
+            display: inline-block;
+            margin-right: 1rem;
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            transition: color 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            color: var(--accent-color);
+        }
+
+        .language-selector {
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .footer {
+                text-align: center;
+            }
+
+            .footer-section {
+                margin-bottom: 2rem;
+            }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-book-open me-2"></i>JñānaSetu.AI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" data-translate="nav_home">Home</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="researchToolsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-translate="nav_research_tools">Research Tools</a>
+                        <ul class="dropdown-menu" aria-labelledby="researchToolsDropdown">
+                            <li><a class="dropdown-item" href="/citation_generator" data-translate="nav_citation_generator">Citation Generator</a></li>
+                            <li><a class="dropdown-item" href="/gap_finder" data-translate="nav_gap_finder">Gap Finder</a></li>
+                            <li><a class="dropdown-item" href="/flowchart_generator" data-translate="nav_flowchart_generator">Flowchart Generator</a></li>
+                            <li><a class="dropdown-item" href="/summarizer" data-translate="nav_summarizer">Auto-Summarizer</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="analysisDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" data-translate="nav_analysis">Analysis</a>
+                        <ul class="dropdown-menu" aria-labelledby="analysisDropdown">
+                            <li><a class="dropdown-item" href="/hypothesis_validator" data-translate="nav_hypothesis_validator">Hypothesis Validator</a></li>
+                            <li><a class="dropdown-item" href="/patent_analyzer" data-translate="nav_patent_analyzer">Patent Analyzer</a></li>
+                            <li><a class="dropdown-item" href="/dataset_explorer" data-translate="nav_dataset_explorer">Dataset Explorer</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/chatbot" data-translate="nav_chatbot">Research Chatbot</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/debate" data-translate="nav_debate">Multi-Agent Debate</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about" data-translate="nav_about">About Us</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe me-1"></i><span data-translate="nav_language">Language</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                            <li><a class="dropdown-item" href="?lang=en" data-lang="en" data-translate="lang_en">English</a></li>
+                            <li><a class="dropdown-item" href="?lang=hi" data-lang="hi" data-translate="lang_hi">हिंदी (Hindi)</a></li>
+                            <li><a class="dropdown-item" href="?lang=kn" data-lang="kn" data-translate="lang_kn">ಕನ್ನಡ (Kannada)</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_jnana_setu">JñānaSetu.AI</h5>
+                    <p data-translate="footer_description">Empowering researchers with AI-driven tools for citation, analysis, and collaboration, fostering innovation and discovery.</p>
+                    <div class="social-icons mt-4">
+                        <a href="#"><i class="fab fa-telegram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_services">Services</h5>
+                    <ul class="footer-links">
+                        <li><a href="/citation_generator" data-translate="footer_citation_generator">Citation Generator</a></li>
+                        <li><a href="/gap_finder" data-translate="footer_gap_finder">Gap Finder</a></li>
+                        <li><a class="dropdown-item" href="/flowchart_generator" data-translate="footer_flowchart_generator">Flowchart Generator</a></li>
+                        <li><a href="/summarizer" data-translate="footer_summarizer">Auto-Summarizer</a></li>
+                        <li><a href="/hypothesis_validator" data-translate="footer_hypothesis_validator">Hypothesis Validator</a></li>
+                        <li><a href="/patent_analyzer" data-translate="footer_patent_analyzer">Patent Analyzer</a></li>
+                        <li><a href="/dataset_explorer" data-translate="footer_dataset_explorer">Dataset Explorer</a></li>
+                        <li><a href="/chatbot" data-translate="footer_chatbot">Research Chatbot</a></li>
+                        <li><a href="/debate" data-translate="footer_debate">Multi-Agent Debate</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_company">Company</h5>
+                    <ul class="footer-links">
+                        <li><a href="/about" data-translate="footer_about">About Us</a></li>
+                        <li><a href="/mission" data-translate="footer_mission">Our Mission</a></li>
+                        <li><a href="/impact" data-translate="footer_impact">Impact Stories</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 col-md-6 footer-section">
+                    <h5 class="footer-heading" data-translate="footer_contact_us">Contact Us</h5>
+                    <p><i class="fas fa-map-marker-alt me-2"></i><span data-translate="footer_address">123 Innovation Hub, Bengaluru, Karnataka, India</span></p>
+                    <p><i class="fas fa-phone me-2"></i><span data-translate="footer_phone">+91 9876543210</span></p>
+                    <p><i class="fas fa-envelope me-2"></i><a href="mailto:support@jnanasetu.ai" data-translate="footer_email">support@jnanasetu.ai</a></p>
+                    <div class="mt-3">
+                        <select class="form-select form-select-sm language-selector" id="footer-language" aria-label="Language selector">
+                            <option value="en" data-translate="lang_en">English</option>
+                            <option value="hi" data-translate="lang_hi">हिंदी (Hindi)</option>
+                            <option value="kn" data-translate="lang_kn">ಕನ್ನಡ (Kannada)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <hr class="mt-4 mb-4" style="border-color: rgba(255, 255, 255, 0.1);">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p data-translate="footer_copyright">© 2025 JñānaSetu.AI. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <a href="/privacy" class="me-3" data-translate="footer_privacy">Privacy Policy</a>
+                    <a href="/terms" class="me-3" data-translate="footer_terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Language Switcher Script -->
+    <script>
+        // Translation object
+        const translations = {
+            en: {
+                nav_home: "Home",
+                nav_research_tools: "Research Tools",
+                nav_citation_generator: "Citation Generator",
+                nav_gap_finder: "Gap Finder",
+                nav_flowchart_generator: "Flowchart Generator",
+                nav_summarizer: "Auto-Summarizer",
+                nav_analysis: "Analysis",
+                nav_hypothesis_validator: "Hypothesis Validator",
+                nav_patent_analyzer: "Patent Analyzer",
+                nav_dataset_explorer: "Dataset Explorer",
+                nav_chatbot: "Research Chatbot",
+                nav_debate: "Multi-Agent Debate",
+                nav_about: "About Us",
+                nav_language: "Language",
+                footer_jnana_setu: "JñānaSetu.AI",
+                footer_description: "Empowering researchers with AI-driven tools for citation, analysis, and collaboration, fostering innovation and discovery.",
+                footer_services: "Services",
+                footer_citation_generator: "Citation Generator",
+                footer_gap_finder: "Gap Finder",
+                footer_flowchart_generator: "Flowchart Generator",
+                footer_summarizer: "Auto-Summarizer",
+                footer_hypothesis_validator: "Hypothesis Validator",
+                footer_patent_analyzer: "Patent Analyzer",
+                footer_dataset_explorer: "Dataset Explorer",
+                footer_chatbot: "Research Chatbot",
+                footer_debate: "Multi-Agent Debate",
+                footer_company: "Company",
+                footer_about: "About Us",
+                footer_mission: "Our Mission",
+                footer_impact: "Impact Stories",
+                footer_contact_us: "Contact Us",
+                footer_address: "123 Innovation Hub, Bengaluru, Karnataka, India",
+                footer_phone: "+91 9876543210",
+                footer_email: "support@jnanasetu.ai",
+                footer_copyright: "© 2025 JñānaSetu.AI. All rights reserved.",
+                footer_privacy: "Privacy Policy",
+                footer_terms: "Terms of Service",
+                lang_en: "English",
+                lang_hi: "हिंदी (Hindi)",
+                lang_kn: "ಕನ್ನಡ (Kannada)"
+            },
+            hi: {
+                nav_home: "होम",
+                nav_research_tools: "शोध उपकरण",
+                nav_citation_generator: "उद्धरण जनरेटर",
+                nav_gap_finder: "अंतर खोजक",
+                nav_flowchart_generator: "फ्लोचार्ट जनरेटर",
+                nav_summarizer: "स्वचालित संक्षेपक",
+                nav_analysis: "विश्लेषण",
+                nav_hypothesis_validator: "परिकल्पना सत्यापनकर्ता",
+                nav_patent_analyzer: "पेटेंट विश्लेषक",
+                nav_dataset_explorer: "डेटासेट अन्वेषक",
+                nav_chatbot: "शोध चैटबॉट",
+                nav_debate: "बहु-एजेंट बहस",
+                nav_about: "हमारे बारे में",
+                nav_language: "भाषा",
+                footer_jnana_setu: "ज्ञानसेतु.एआई",
+                footer_description: "शोधकर्ताओं को उद्धरण, विश्लेषण और सहयोग के लिए एआई-संचालित उपकरणों के साथ सशक्त बनाना, नवाचार और खोज को बढ़ावा देना।",
+                footer_services: "सेवाएँ",
+                footer_citation_generator: "उद्धरण जनरेटर",
+                footer_gap_finder: "अंतर खोजक",
+                footer_flowchart_generator: "फ्लोचार्ट जनरेटर",
+                footer_summarizer: "स्वचालित संक्षेपक",
+                footer_hypothesis_validator: "परिकल्पना सत्यापनकर्ता",
+                footer_patent_analyzer: "पेटेंट विश्लेषक",
+                footer_dataset_explorer: "डेटासेट अन्वेषक",
+                footer_chatbot: "शोध चैटबॉट",
+                footer_debate: "बहु-एजेंट बहस",
+                footer_company: "कंपनी",
+                footer_about: "हमारे बारे में",
+                footer_mission: "हमारा मिशन",
+                footer_impact: "प्रभाव कहानियाँ",
+                footer_contact_us: "हमसे संपर्क करें",
+                footer_address: "123 नवाचार हब, बेंगलुरु, कर्नाटक, भारत",
+                footer_phone: "+91 9876543210",
+                footer_email: "support@jnanasetu.ai",
+                footer_copyright: "© 2025 ज्ञानसेतु.एआई। सभी अधिकार सुरक्षित।",
+                footer_privacy: "गोपनीयता नीति",
+                footer_terms: "सेवा की शर्तें",
+                lang_en: "अंग्रेजी",
+                lang_hi: "हिंदी",
+                lang_kn: "कन्नड़"
+            },
+            kn: {
+                nav_home: "ಮುಖಪುಟ",
+                nav_research_tools: "ಸಂಶೋಧನಾ ಸಾಧನಗಳು",
+                nav_citation_generator: "ಉಲ್ಲೇಖ ಜನರೇಟರ್",
+                nav_gap_finder: "ಗ್ಯಾಪ್ ಫೈಂಡರ್",
+                nav_flowchart_generator: "ಫ್ಲೋಚಾರ್ಟ್ ಜನರೇಟರ್",
+                nav_summarizer: "ಸ್ವಯಂಚಾಲಿತ ಸಾರಾಂಶಕ",
+                nav_analysis: "ವಿಶ್ಲೇಷಣೆ",
+                nav_hypothesis_validator: "ಕಲ್ಪನೆ ಸಿಂಧೀಕರಣಕಾರ",
+                nav_patent_analyzer: "ಪೇಟೆಂಟ್ ವಿಶ್ಲೇಷಕ",
+                nav_dataset_explorer: "ಡೇಟಾಸೆಟ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್",
+                nav_chatbot: "ಸಂಶೋಧನಾ ಚಾಟ್‌ಬಾಟ್",
+                nav_debate: "ಬಹು-ಏಜೆಂಟ್ ವಾದ",
+                nav_about: "ನಮ್ಮ ಬಗ್ಗೆ",
+                nav_language: "ಭಾಷೆ",
+                footer_jnana_setu: "ಜ್ಞಾನಸೇತು.ಎಐ",
+                footer_description: "ಸಂಶೋಧಕರನ್ನು ಉಲ್ಲೇಖ, ವಿಶ್ಲೇಷಣೆ ಮತ್ತು ಸಹಯೋಗಕ್ಕಾಗಿ ಎಐ-ಚಾಲಿತ ಸಾಧನಗಳೊಂದಿಗೆ ಸಬಲೀಕರಣಗೊಳಿಸುವುದು, ನಾವೀನ್ಯತೆ ಮತ್ತು ಆವಿಷ್ಕಾರವನ್ನು ಉತ್ತೇಜಿಸುವುದು।",
+                footer_services: "ಸೇವೆಗಳು",
+                footer_citation_generator: "ಉಲ್ಲೇಖ ಜನರೇಟರ್",
+                footer_gap_finder: "ಗ್ಯಾಪ್ ಫೈಂಡರ್",
+                footer_flowchart_generator: "ಫ್ಲೋಚಾರ್ಟ್ ಜನರೇಟರ್",
+                footer_summarizer: "ಸ್ವಯಂಚಾಲಿತ ಸಾರಾಂಶಕ",
+                footer_hypothesis_validator: "ಕಲ್ಪನೆ ಸಿಂಧೀಕರಣಕಾರ",
+                footer_patent_analyzer: "ಪೇಟೆಂಟ್ ವಿಶ್ಲೇಷಕ",
+                footer_dataset_explorer: "ಡೇಟಾಸೆಟ್ ಎಕ್ಸ್‌ಪ್ಲೋರರ್",
+                footer_chatbot: "ಸಂಶೋಧನಾ ಚಾಟ್‌ಬಾಟ್",
+                footer_debate: "ಬಹು-ಏಜೆಂಟ್ ವಾದ",
+                footer_company: "ಕಂಪನಿ",
+                footer_about: "ನಮ್ಮ ಬಗ್ಗೆ",
+                footer_mission: "ನಮ್ಮ ಧ್ಯೇಯ",
+                footer_impact: "ಪ್ರಭಾವದ ಕಥೆಗಳು",
+                footer_contact_us: "ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",
+                footer_address: "123 ನಾವೀನ್ಯತೆ ಹಬ್, ಬೆಂಗಳೂರು, ಕರ್ನಾಟಕ, ಭಾರತ",
+                footer_phone: "+91 9876543210",
+                footer_email: "support@jnanasetu.ai",
+                footer_copyright: "© 2025 ಜ್ಞಾನಸೇತು.ಎಐ. ಎಲ್ಲಾ ಹಕ್ಕುಗಳು ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ。",
+                footer_privacy: "ಗೌಪ್ಯತೆ ನೀತಿ",
+                footer_terms: "ಸೇವೆಯ ಷರತ್ತುಗಳು",
+                lang_en: "ಇಂಗ್ಲಿಷ್",
+                lang_hi: "ಹಿಂದಿ",
+                lang_kn: "ಕನ್ನಡ"
+            }
+        };
+
+        // Function to get the current language from URL
+        function getCurrentLanguage() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('lang') || 'en'; // Default to English
+        }
+
+        // Function to update content based on language
+        function updateContent(lang) {
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (translations[lang] && translations[lang][key]) {
+                    element.textContent = translations[lang][key];
+                }
+            });
+            // Update language selectors
+            document.querySelectorAll('.language-selector').forEach(select => {
+                select.value = lang;
+            });
+        }
+
+        // Initialize content based on URL language
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentLang = getCurrentLanguage();
+            updateContent(currentLang);
+
+            // Handle navbar dropdown language change
+            document.querySelectorAll('.dropdown-menu [data-lang]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const lang = item.getAttribute('data-lang');
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('lang', lang);
+                    window.location.href = newUrl; // Reload page to apply translations
+                });
+            });
+
+            // Handle footer language selector
+            const footerSelect = document.getElementById('footer-language');
+            if (footerSelect) {
+                footerSelect.addEventListener('change', (e) => {
+                    const lang = e.target.value;
+                    const newUrl = new URL(window.location);
+                    newUrl.searchParams.set('lang', lang);
+                    window.location.href = newUrl; // Reload page to apply translations
+                });
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+
+{% block title %}JñānaSetu.AI - Flowchart Generator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .flowchart-section {
+        padding: 80px 0;
+        background: url('https://images.pexels.com/photos/590041/pexels-photo-590041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center/cover;
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+    }
+
+    .flowchart-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(180deg, rgba(30, 42, 68, 0.6), rgba(30, 42, 68, 0.8));
+    }
+
+    .flowchart-container {
+        position: relative;
+        z-index: 1;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .flowchart-section h2 {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--light-color);
+        text-transform: uppercase;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .flowchart-section p {
+        font-size: 20px;
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto 40px;
+        color: var(--light-color);
+    }
+
+    .form-container {
+        background: #fff;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        max-width: 700px;
+        margin: 0 auto 40px;
+        border: 1px solid var(--accent-color);
+    }
+
+    .form-container textarea {
+        width: 100%;
+        min-height: 200px;
+        padding: 15px;
+        border: 1px solid var(--secondary-color);
+        border-radius: 8px;
+        font-size: 16px;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-container textarea:focus {
+        border-color: var(--accent-color);
+        outline: none;
+    }
+
+    .form-container button {
+        background: linear-gradient(45deg, var(--accent-color), #e38944);
+        color: var(--dark-color);
+        padding: 12px 40px;
+        border: none;
+        border-radius: 50px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 4px 15px rgba(244, 162, 97, 0.4);
+    }
+
+    .form-container button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(244, 162, 97, 0.6);
+    }
+
+    .error-message {
+        color: #d9534f;
+        font-size: 16px;
+        margin: 20px 0;
+        text-align: center;
+    }
+
+    .flowchart-results {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 30px;
+        padding: 0 20px;
+    }
+
+    .flowchart-card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid var(--accent-color);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .flowchart-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-color), #e38944);
+    }
+
+    .flowchart-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .flowchart-card h3 {
+        font-size: 22px;
+        margin-bottom: 15px;
+        color: var(--dark-color);
+    }
+
+    .flowchart-card .mermaid {
+        width: 350px;
+        height: 300px;
+        overflow: auto;
+        margin-bottom: 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        background: #f9f9f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .flowchart-card .mermaid svg {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+    }
+
+    .flowchart-card .download-links a {
+        display: inline-block;
+        margin: 10px 10px 0 0;
+        color: var(--secondary-color);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+
+    .flowchart-card .download-links a:hover {
+        color: var(--accent-color);
+    }
+
+    .flowchart-card .error {
+        color: #d9534f;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.8);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .spinner {
+        border: 5px solid var(--light-color);
+        border-top: 5px solid var(--accent-color);
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .flowchart-section h2 {
+            font-size: 34px;
+        }
+
+        .flowchart-section p {
+            font-size: 16px;
+        }
+
+        .form-container {
+            padding: 20px;
+        }
+
+        .form-container textarea {
+            font-size: 14px;
+        }
+
+        .flowchart-card {
+            padding: 15px;
+        }
+
+        .flowchart-card .mermaid {
+            width: 100%;
+            height: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flowchart-section">
+    <div class="flowchart-container">
+        <h2 data-translate="flowchart_generator_title">Flowchart Generator</h2>
+        <p data-translate="flowchart_generator_description">Create custom flowcharts for your research processes using AI-driven Mermaid syntax generation.</p>
+        
+        <div class="form-container">
+            <form id="flowchart-form" method="POST" action="{{ url_for('flowchart_generator') }}">
+                <textarea name="description" placeholder="Enter your flowchart description (e.g., 'Steps for conducting a literature review')" required></textarea>
+                <button type="submit">Generate Flowcharts</button>
+            </form>
+        </div>
+
+        {% if error %}
+            <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        {% if result.variants %}
+            <div class="flowchart-results">
+                {% for variant in result.variants %}
+                    <div class="flowchart-card">
+                        <h3>{{ variant.name }}</h3>
+                        {% if variant.error %}
+                            <p class="error">{{ variant.error }}</p>
+                        {% else %}
+                            <div class="mermaid" data-variant-id="{{ variant.id }}" data-json-path="/static/outputs/mermaid_code_variant{{ variant.id }}.json"></div>
+                            <div class="download-links">
+                                <a href="{{ url_for('download', file_type='svg', variant_id=variant.id) }}">Download SVG</a>
+                                <a href="{{ url_for('download', file_type='png', variant_id=variant.id) }}">Download PNG</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/mermaid@10.9.0/dist/mermaid.min.js"></script>
+<script>
+    // Initialize Mermaid with consistent rendering
+    mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#F4A261',
+            primaryTextColor: '#0F172A',
+            secondaryColor: '#2E6A7A',
+            lineColor: '#1E2A44',
+            background: '#F5F7FA'
+        },
+        flowchart: {
+            useMaxWidth: true,
+            htmlLabels: true,
+            diagramPadding: 8
+        }
+    });
+
+    // Show loading spinner on form submit
+    document.getElementById('flowchart-form').addEventListener('submit', () => {
+        document.getElementById('loading-overlay').style.display = 'flex';
+    });
+
+    // Animate elements on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animation = 'fadeInUp 1s ease-out forwards';
+            }
+        });
+    }, { threshold: 0.2 });
+
+    document.querySelectorAll('.flowchart-card, .flowchart-section h2, .flowchart-section p').forEach(el => {
+        observer.observe(el);
+    });
+
+    // Render Mermaid diagrams for each variant
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Hide loading spinner
+        document.getElementById('loading-overlay').style.display = 'none';
+
+        const mermaidDivs = document.querySelectorAll('.mermaid');
+        for (const div of mermaidDivs) {
+            const variantId = div.getAttribute('data-variant-id');
+            const jsonPath = div.getAttribute('data-json-path');
+
+            try {
+                const response = await fetch(jsonPath);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch JSON for variant ${variantId}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const mermaidCode = data.mermaid_code;
+
+                if (!mermaidCode) {
+                    div.innerHTML = '<p class="error">No valid Mermaid code found</p>';
+                    continue;
+                }
+
+                // Render Mermaid diagram with unique ID
+                try {
+                    const { svg } = await mermaid.render(`mermaid-${variantId}-${Date.now()}`, mermaidCode);
+                    div.innerHTML = svg;
+                } catch (renderError) {
+                    div.innerHTML = `<p class="error">Error rendering flowchart: ${renderError.message}</p>`;
+                }
+            } catch (error) {
+                div.innerHTML = `<p class="error">Error loading flowchart: ${error.message}</p>`;
+            }
+        }
+    });
+</script>
+{% endblock %}

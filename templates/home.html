@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}JñānaSetu.AI - Empowering Research{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero {
+        height: 100vh;
+        background: url('https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2') no-repeat center center/cover;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(180deg, rgba(30, 42, 68, 0.5), rgba(30, 42, 68, 0.7));
+    }
+
+    .hero-content {
+        position: relative;
+        max-width: 900px;
+        padding: 20px;
+        animation: fadeInUp 1.2s ease-out;
+    }
+
+    .hero-content h1 {
+        font-size: 58px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: var(--accent-color);
+        text-shadow: 0 0 10px rgba(244, 162, 97, 0.5);
+    }
+
+    .hero-content p {
+        font-size: 20px;
+        line-height: 1.6;
+        margin-bottom: 40px;
+        color: var(--light-color);
+    }
+
+    .cta-button {
+        background: linear-gradient(45deg, var(--accent-color), #e38944);
+        color: var(--dark-color);
+        padding: 15px 40px;
+        text-decoration: none;
+        font-size: 18px;
+        font-weight: 700;
+        border-radius: 50px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 4px 15px rgba(244, 162, 97, 0.4);
+    }
+
+    .cta-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(244, 162, 97, 0.6);
+        color: var(--dark-color);
+    }
+
+    .section {
+        padding: 80px 0;
+        text-align: center;
+        background: var(--light-color);
+    }
+
+    .section h2 {
+        font-size: 38px;
+        margin-bottom: 20px;
+        color: var(--dark-color);
+        text-transform: uppercase;
+    }
+
+    .section p {
+        font-size: 18px;
+        line-height: 1.6;
+        max-width: 700px;
+        margin: 0 auto 40px;
+        color: #3c4a6b;
+    }
+
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        padding: 0 20px;
+    }
+
+    .feature-card {
+        background: #fff;
+        padding: 30px;
+        border-radius: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid var(--accent-color);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-color), #e38944);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-card h3 {
+        font-size: 24px;
+        margin-bottom: 15px;
+        color: var(--dark-color);
+    }
+
+    .feature-card p {
+        font-size: 16px;
+        color: #3c4a6b;
+    }
+
+    .feature-card i {
+        font-size: 30px;
+        color: var(--accent-color);
+        margin-bottom: 15px;
+    }
+
+    /* Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .hero-content h1 {
+            font-size: 40px;
+            letter-spacing: 2px;
+        }
+
+        .hero-content p {
+            font-size: 16px;
+        }
+
+        .section h2 {
+            font-size: 32px;
+        }
+
+        .feature-card {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <div class="hero-content">
+        <h1 data-translate="hero_title">Empowering Research</h1>
+        <p data-translate="hero_description">JñānaSetu.AI empowers researchers with AI-driven tools for citation, analysis, and collaboration, fostering innovation and discovery.</p>
+        <a href="/citation_generator" class="cta-button" data-translate="hero_cta">Get Started</a>
+    </div>
+</div>
+
+<div class="section">
+    <div class="container">
+        <h2 data-translate="solutions_title">Our Research Solutions</h2>
+        <p data-translate="solutions_description">Empowering researchers with AI-driven tools designed for efficiency, accuracy, and accessibility.</p>
+        <div class="features">
+            <div class="feature-card">
+                <i class="fas fa-quote-right"></i>
+                <h3 data-translate="feature_citation_title">Citation Generator</h3>
+                <p data-translate="feature_citation_description">Automatically generate and verify citations in APA, MLA, and Chicago formats with AI precision.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-search"></i>
+                <h3 data-translate="feature_gap_finder_title">Gap Finder</h3>
+                <p data-translate="feature_gap_finder_description">Identify under-explored areas in literature to guide your research focus.</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-brain"></i>
+                <h3 data-translate="feature_chatbot_title">Research Chatbot</h3>
+                <p data-translate="feature_chatbot_description">Engage with an AI assistant that remembers your research context and provides tailored insights.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="section">
+    <div class="container">
+        <h2 data-translate="why_jnana_setu_title">Why JñānaSetu.AI?</h2>
+        <p data-translate="why_jnana_setu_description">Our platform combines cutting-edge AI with user-friendly design, offering multilingual support to streamline research globally.</p>
+        <a href="/about" class="cta-button" data-translate="why_jnana_setu_cta">Learn More</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize hero background position and scroll to top on load
+    document.addEventListener('DOMContentLoaded', () => {
+        const hero = document.querySelector('.hero');
+        if (hero) {
+            hero.style.backgroundPositionY = '0px'; // Reset background position
+            window.scrollTo(0, 0); // Force scroll to top
+        }
+    });
+
+    // Parallax effect for hero background
+    window.addEventListener('scroll', () => {
+        const hero = document.querySelector('.hero');
+        if (hero) {
+            const scrollPosition = window.pageYOffset;
+            hero.style.backgroundPositionY = `${scrollPosition * 0.3}px`;
+        }
+    });
+
+    // Animate elements on scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animation = 'fadeInUp 1s ease-out forwards';
+            }
+        });
+    }, { threshold: 0.2 });
+
+    document.querySelectorAll('.feature-card, .section h2, .section p').forEach(el => {
+        observer.observe(el);
+    });
+</script>
+{% endblock %}

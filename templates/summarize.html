@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}JñānaSetu.AI - Auto-Summarizer{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .upload-section {
+        margin-bottom: 2.5rem;
+        text-align: center;
+    }
+
+    .upload-section input[type="file"] {
+        border: 2px dashed var(--secondary-color);
+        padding: 1.5rem;
+        border-radius: 10px;
+        background-color: var(--light-color);
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    .upload-section input[type="file"]:hover {
+        border-color: var(--accent-color);
+    }
+
+    .upload-section .btn-primary {
+        padding: 0.75rem 2rem;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .upload-section .btn-primary:hover {
+        background-color: #255560;
+        transform: translateY(-2px);
+    }
+
+    .loading-spinner {
+        display: none;
+        margin: 1rem auto;
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--secondary-color);
+        border-top: 4px solid var(--accent-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .result-section {
+        margin-top: 3rem;
+        padding: 1.5rem;
+        background-color: var(--light-color);
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .result-section h3 {
+        color: var(--primary-color);
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
+    }
+
+    .result-box {
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        border-left: 5px solid var(--accent-color);
+        background-color: #fff;
+    }
+
+    .result-box h4 {
+        color: var(--secondary-color);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .result-box ul {
+        list-style-type: disc;
+        padding-left: 1.75rem;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .error-message {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+    }
+
+    .error-message i {
+        margin-right: 0.5rem;
+    }
+
+    .download-btn {
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        background-color: var(--secondary-color);
+        color: var(--light-color);
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    .download-btn:hover {
+        background-color: #255560;
+        transform: translateY(-2px);
+    }
+
+    .generated-date {
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+        text-align: center;
+        margin-top: 2rem;
+        font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+        .summary-container {
+            padding: 1.5rem;
+            margin: 1rem;
+        }
+
+        .upload-section .btn-primary {
+            padding: 0.5rem 1.5rem;
+            font-size: 1rem;
+        }
+
+        .result-section h3 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container summary-container">
+    <h1 class="text-center mb-4" data-translate="summarizer_title">Auto-Summarizer</h1>
+    <p class="text-center mb-5 lead" data-translate="summarizer_description">Upload a PDF research paper or report to generate a concise summary and detect potential biases in tone, framing, and source diversity.</p>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <form method="POST" enctype="multipart/form-data" id="uploadForm">
+            <div class="mb-4">
+                <label for="file" class="form-label fw-bold" data-translate="summarizer_upload_label">Upload PDF Document</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".pdf" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="submitBtn" data-translate="summarizer_submit">Generate Summary</button>
+            <div class="loading-spinner" id="loadingSpinner"></div>
+        </form>
+    </div>
+
+    <!-- Error Message -->
+    {% if error %}
+        <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i>{{ error }}
+        </div>
+    {% endif %}
+
+    <!-- Result Section -->
+    {% if result.summary %}
+        <div class="result-section animate__animated animate__fadeIn">
+            <h3 data-translate="summarizer_summary_title">Summary</h3>
+            <div class="result-box">
+                <h4 data-translate="summarizer_key change_points">Key Points</h4>
+                <ul>
+                    {% for point in result.summary.key_points %}
+                        <li>{{ point }}</li>
+                    {% endfor %}
+                </ul>
+                <h4 data-translate="summarizer_methodologies">Methodologies</h4>
+                <ul>
+                    {% for method in result.summary.methodologies %}
+                        <li>{{ method }}</li>
+                    {% endfor %}
+                </ul>
+                <h4 data-translate="summarizer_findings">Findings</h4>
+                <ul>
+                    {% for finding in result.summary.findings %}
+                        <li>{{ finding }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <h3 data-translate="summarizer_bias_title">Bias Analysis</h3>
+            <div class="result-box">
+                <h4 data-translate="summarizer_tone">Tone</h4>
+                <p>{{ result.bias_analysis.tone.description }}</p>
+                <ul>
+                    {% for flag in result.bias_analysis.tone.flags %}
+                        <li>{{ flag }}</li>
+                    {% endfor %}
+                </ul>
+                <h4 data-translate="summarizer_framing">Framing</h4>
+                <p>{{ result.bias_analysis.framing.description }}</p>
+                <ul>
+                    {% for flag in result.bias_analysis.framing.flags %}
+                        <li>{{ flag }}</li>
+                    {% endfor %}
+                </ul>
+                <h4 data-translate="summarizer_source_diversity">Source Diversity</h4>
+                <p>{{ result.bias_analysis.source_diversity.description }}</p>
+                <ul>
+                    {% for flag in result.bias_analysis.source_diversity.flags %}
+                        <li>{{ flag }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <a href="/download/summary/{{ result.document_id }}.json" class="btn btn-primary download-btn" data-translate="summarizer_download" id="downloadBtn">Download Summary (JSON)</a>
+        </div>
+
+        <p class="generated-date" data-translate="summarizer_generated_on">Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    // Add translations for summarizer page
+    const summarizerTranslations = {
+        en: {
+            summarizer_title: "Auto-Summarizer",
+            summarizer_description: "Upload a PDF research paper or report to generate a concise summary and detect potential biases in tone, framing, and source diversity.",
+            summarizer_upload_label: "Upload PDF Document",
+            summarizer_submit: "Generate Summary",
+            summarizer_summary_title: "Summary",
+            summarizer_key_points: "Key Points",
+            summarizer_methodologies: "Methodologies",
+            summarizer_findings: "Findings",
+            summarizer_bias_title: "Bias Analysis",
+            summarizer_tone: "Tone",
+            summarizer_framing: "Framing",
+            summarizer_source_diversity: "Source Diversity",
+            summarizer_download: "Download Summary (JSON)",
+            summarizer_generated_on: "Generated on"
+        },
+        hi: {
+            summarizer_title: "स्वचालित संक्षेपक",
+            summarizer_description: "एक पीडीएफ शोध पत्र या रिपोर्ट अपलोड करें ताकि संक्षिप्त सारांश बनाया जा सके और स्वर, ढांचे, और स्रोत विविधता में संभावित पक्षपात का पता लगाया जा सके।",
+            summarizer_upload_label: "पीडीएफ दस्तावेज अपलोड करें",
+            summarizer_submit: "सारांश उत्पन्न करें",
+            summarizer_summary_title: "सारांश",
+            summarizer_key_points: "मुख्य बिंदु",
+            summarizer_methodologies: "पद्धतियाँ",
+            summarizer_findings: "निष्कर्ष",
+            summarizer_bias_title: "पक्षपात विश्लेषण",
+            summarizer_tone: "स्वर",
+            summarizer_framing: "ढांचा",
+            summarizer_source_diversity: "स्रोत विविधता",
+            summarizer_download: "सारांश डाउनलोड करें (JSON)",
+            summarizer_generated_on: "उत्पन्न किया गया"
+        },
+        kn: {
+            summarizer_title: "ಸ್ವಯಂಚಾಲಿತ ಸಾರಾಂಶಕ",
+            summarizer_description: "ಸಂಕ್ಷಿಪ्त ಸಾರಾಂಶವನ್ನು ರಚಿಸಲು ಮತ್ತು ಧ್ವನಿ, ಚೌಕಟ್ಟು ಮತ್ತು ಮೂಲ ವೈವಿಧ್ಯದಲ್ಲಿ ಸಂಭಾವ್ಯ ಪಕ್ಷಪಾತವನ್ನು ಪತ್ತೆಹಚ್ಚಲು PDF ಸಂಶೋಧನಾ ಪತ್ರಿಕೆ ಅಥವಾ ವರದಿಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ.",
+            summarizer_upload_label: "PDF ದಾಖಲೆಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+            summarizer_submit: "ಸಾರಾಂಶ ರಚಿಸಿ",
+            summarizer_summary_title: "ಸಾರಾಂಶ",
+            summarizer_key_points: "ಪ್ರಮುಖ ಅಂಶಗಳು",
+            summarizer_methodologies: "ವಿಧಾನಗಳು",
+            summarizer_findings: "ಕಂಡುಕೊಳ್ಳುವಿಕೆಗಳು",
+            summarizer_bias_title: "ಪಕ್ಷಪಾತ ವಿಶ್ಲೇಷಣೆ",
+            summarizer_tone: "ಧ್ವನಿ",
+            summarizer_framing: "ಚೌಕಟ್ಟು",
+            summarizer_source_diversity: "ಮೂಲ ವೈವಿಧ್ಯ",
+            summarizer_download: "ಸಾರಾಂಶ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ (JSON)",
+            summarizer_generated_on: "ರಚಿಸಲಾದ"
+        }
+    };
+
+    // Merge summarizer translations into main translations object
+    document.addEventListener('DOMContentLoaded', () => {
+        // Merge translations
+        Object.keys(summarizerTranslations).forEach(lang => {
+            translations[lang] = { ...translations[lang], ...summarizerTranslations[lang] };
+        });
+        const currentLang = getCurrentLanguage();
+        updateContent(currentLang);
+
+        // Spinner handling
+        const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('loadingSpinner');
+
+        if (form) {
+            form.addEventListener('submit', () => {
+                submitBtn.disabled = true;
+                spinner.style.display = 'block';
+            });
+        }
+
+        // When the page reloads (after Flask returns result), hide spinner & enable button
+        if (spinner) {
+            spinner.style.display = 'none';
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

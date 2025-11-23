@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+{% block title %}JñānaSetu.AI - Knowledge Hub{% endblock %}
+
+{% block extra_css %}
+<style>
+    .knowledge-hub-container {
+        margin: 0 auto;
+        padding: 2rem 1rem;
+        min-height: calc(100vh - 200px); /* Adjust for navbar and footer */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(30, 42, 68, 0.3)), url('https://images.pexels.com/photos/1662298/pexels-photo-1662298.jpeg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+    }
+
+    .knowledge-hub-container h1 {
+        font-size: 2.8em;
+        font-weight: 600;
+        color: var(--light-color);
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .knowledge-hub-container h2 {
+        font-size: 1.8em;
+        font-weight: 500;
+        color: var(--light-color);
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .knowledge-hub-container .form-group {
+        margin-bottom: 2rem;
+        text-align: center;
+        position: relative;
+        width: 100%;
+        max-width: 800px;
+    }
+
+    .knowledge-hub-container .form-group label {
+        display: block;
+        font-size: 1.2em;
+        font-weight: 500;
+        color: var(--light-color);
+        margin-bottom: 0.75rem;
+    }
+
+    .knowledge-hub-container .form-group input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 1em;
+        border: 2px solid var(--secondary-color);
+        border-radius: 8px;
+        background-color: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .knowledge-hub-container .form-group input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(244, 162, 97, 0.5);
+    }
+
+    .knowledge-hub-container .btn {
+        background: linear-gradient(45deg, var(--secondary-color), #2E6A7A);
+        color: var(--light-color);
+        padding: 0.75rem 2rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1em;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .knowledge-hub-container .btn:hover {
+        background: linear-gradient(45deg, #255560, var(--secondary-color));
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .knowledge-hub-container .btn:active {
+        transform: translateY(0);
+    }
+
+    .knowledge-hub-container .btn .spinner {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border: 3px solid var(--light-color);
+        border-top: 3px solid var(--accent-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .knowledge-hub-container .btn.loading .spinner {
+        display: inline-block;
+    }
+
+    .knowledge-hub-container .btn.loading span {
+        display: none;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .knowledge-hub-container .alert {
+        background-color: rgba(255, 230, 230, 0.9);
+        color: #cc0000;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        text-align: center;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .knowledge-hub-container .result-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+        width: 100%;
+    }
+
+    .knowledge-hub-container .card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(245, 247, 250, 0.95));
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: slideIn 0.5s ease forwards;
+    }
+
+    .knowledge-hub-container .card:nth-child(2) { animation-delay: 0.2s; }
+    .knowledge-hub-container .card:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes slideIn {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .knowledge-hub-container .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .knowledge-hub-container .card-header {
+        background: linear-gradient(90deg, var(--primary-color), #2E3A59);
+        color: var(--light-color);
+        padding: 1rem;
+        border-radius: 8px 8px 0 0;
+        font-size: 1.2em;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .knowledge-hub-container .card-body {
+        padding: 1.5rem;
+        font-size: 0.95em;
+        color: var(--dark-color);
+        background-color: #e1f2ff;
+    }
+
+    .knowledge-hub-container .card-body p {
+        margin: 0;
+    }
+
+    .knowledge-hub-container .card-body ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    .knowledge-hub-container .card-body ul li {
+        margin-bottom: 0.75rem;
+        padding-left: 1.5rem;
+        position: relative;
+    }
+
+    .knowledge-hub-container .card-body ul li::before {
+        content: '•';
+        color: var(--accent-color);
+        position: absolute;
+        left: 0;
+        font-size: 1.2em;
+    }
+
+    .knowledge-hub-container .no-results {
+        color: #666;
+        font-style: italic;
+        text-align: center;
+        margin: 0;
+    }
+
+    .knowledge-hub-container .icon {
+        width: 24px;
+        height: 24px;
+        fill: var(--accent-color);
+        transition: transform 0.3s ease;
+    }
+
+    .knowledge-hub-container .card:hover .icon {
+        transform: scale(1.2);
+    }
+
+    .knowledge-hub-container .debug-section {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background-color: rgba(249, 249, 249, 0.9);
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 800px;
+    }
+
+    .knowledge-hub-container .debug-section h3 {
+        font-size: 1.4em;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+    }
+
+    .knowledge-hub-container .debug-section pre {
+        white-space: pre-wrap;
+        font-size: 0.9em;
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    @media (max-width: 768px) {
+        .knowledge-hub-container h1 {
+            font-size: 2em;
+        }
+
+        .knowledge-hub-container h2 {
+            font-size: 1.5em;
+        }
+
+        .knowledge-hub-container .form-group input {
+            max-width: 100%;
+        }
+
+        .knowledge-hub-container .result-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .knowledge-hub-container {
+            min-height: calc(100vh - 250px); /* Adjust for smaller screens */
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="knowledge-hub-container">
+    <h1 data-translate="knowledge_hub_title">Knowledge Hub</h1>
+    <form method="POST" class="form-group">
+        <label for="query" data-translate="search_label">Search for Resources:</label>
+        <input type="text" id="query" name="query" value="{{ query or '' }}" placeholder="e.g., Explainable AI in Healthcare" required>
+        <button type="submit" class="btn" id="search-btn">
+            <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <span data-translate="search_button">Search</span>
+            <div class="spinner"></div>
+        </button>
+    </form>
+
+    {% if error %}
+    <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+    <h2 data-translate="results_for">Results for: {{ query }}</h2>
+    <div class="result-grid">
+        <!-- YouTube Tutorials -->
+        <div class="card">
+            <div class="card-header">
+                <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M21.58 7.19c-.23-.86-.86-1.49-1.72-1.72C18.29 5 12 5 12 5s-6.29 0-7.86.47c-.86.23-1.49.86-1.72 1.72C2 8.76 2 12 2 12s0 3.24.42 4.81c.23.86.86 1.49 1.72 1.72C5.71 19 12 19 12 19s6.29 0 7.86-.47c.86-.23 1.49-.86 1.72-1.72C22 15.24 22 12 22 12s0-3.24-.42-4.81zM10 15.5v-7l6 3.5-6 3.5z"/>
+                </svg>
+                <span data-translate="tutorials_youtube">Tutorials (YouTube)</span>
+            </div>
+            <div class="card-body">
+                {% if result['Tutorials'] and result['Tutorials'] != '<ul></ul>' %}
+                    {{ result['Tutorials'] | safe }}
+                {% else %}
+                    <p class="no-results" data-translate="no_tutorials">No YouTube tutorials found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- arXiv Research -->
+        <div class="card">
+            <div class="card-header">
+                <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M6 2h6l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm6 0v4h4l-4-4zm-8 2h8v10H6V6z"/>
+                </svg>
+                <span data-translate="research_arxiv">Research (arXiv)</span>
+            </div>
+            <div class="card-body">
+                {% if result['Research'] and result['Research'] != '<ul></ul>' %}
+                    {{ result['Research'] | safe }}
+                {% else %}
+                    <p class="no-results" data-translate="no_papers">No arXiv papers found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Blogs & MOOCs -->
+        <div class="card">
+            <div class="card-header">
+                <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M4 4v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6H6c-1.1 0-2 .9-2 2zm10 0v4h4l-4-4zm-8 2h8v10H6V6z"/>
+                </svg>
+                <span data-translate="blogs_moocs">Blogs & MOOCs</span>
+            </div>
+            <div class="card-body">
+                {% if result['Blogs & MOOCs'] and result['Blogs & MOOCs'] != '<ul></ul>' %}
+                    {{ result['Blogs & MOOCs'] | safe }}
+                {% else %}
+                    <p class="no-results" data-translate="no_blogs_moocs">No blogs or MOOCs found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('form');
+        const searchBtn = document.getElementById('search-btn');
+
+        if (form && searchBtn) {
+            form.addEventListener('submit', () => {
+                // Add loading state to button
+                searchBtn.classList.add('loading');
+            });
+        }
+    });
+</script>
+{% endblock %}
