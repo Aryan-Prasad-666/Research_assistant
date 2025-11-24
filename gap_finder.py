@@ -9,23 +9,19 @@ from crewai import Agent, Crew, Task, LLM
 import PyPDF2
 import re
 from typing import Dict, Optional
+import uuid
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
 app = Flask(__name__)
 
-# Load environment variables
 load_dotenv()
 
-# Validate environment variables
-gemini_key = os.getenv('gemini_api_key') or os.getenv('ARYAN_API_KEY')
+gemini_key = os.getenv('ARYAN_GEMINI_KEY') 
 if not gemini_key:
     raise ValueError("Missing Gemini API key in environment variables")
 
-# Initialize LLM using crew.LLM
 llm_gemini = LLM(
     model="gemini/gemini-2.5-flash",
     api_key=gemini_key,
@@ -104,122 +100,85 @@ def clean_json_file(file_path: str) -> Optional[str]:
     except Exception as e:
         return str(e)
 
-# CrewAI Agents
-gap_analyzer = Agent(
-    role='Gap Analyzer',
-    goal='Analyze a research paper or report to identify knowledge gaps in methodologies, research questions, and source diversity.',
-    backstory='You are an expert academic reviewer with a keen eye for identifying missing or unclear elements in research documents.',
-    verbose=True,
-    llm=llm_gemini,
-    tools=[]
-)
-
-gap_formatter = Agent(
-    role='Gap Formatter',
-    goal='Format gap analysis results into structured JSON with clear descriptions and suggestions.',
-    backstory='You are a data formatting specialist skilled in presenting academic analysis in a clear, structured JSON format.',
+# Single Main Gap Analyzer Agent
+gap_analyzer_agent = Agent(
+    role='Research Gap Analyzer',
+    goal='Analyze uploaded literature review text to identify key research gaps, under-explored areas, and opportunities for future work. Output directly as structured JSON.',
+    backstory='You are an expert academic analyst specializing in literature reviews. You identify gaps by examining themes, methodologies, findings, and limitations in the provided text.',
     verbose=True,
     llm=llm_gemini,
     tools=[]
 )
 
 def run_gap_finder_crew(text: str, document_id: str) -> Dict:
-    """Run CrewAI to generate gap analysis for the provided text."""
+    """Run the Gap Finder crew with a single main agent to analyze and format gaps."""
     cleanup_old_files()
 
-    # Task 1: Analyze gaps
+    # Single task for the main agent to handle analysis and formatting
     analyze_gaps_task = Task(
         description=(
-            f"Analyze the following document content to identify knowledge gaps in a research paper or report. "
-            f"Focus on three areas:\n"
-            f"- Methodological Gaps: Missing or unclear experimental details, methodologies, or data analysis techniques.\n"
-            f"- Unaddressed Research Questions: Questions or hypotheses not explored or answered.\n"
-            f"- Source Gaps: Lack of diverse citations or reliance on limited sources.\n"
-            f"For each gap, provide a brief description (1-2 sentences) and a suggestion for improvement (1 sentence).\n"
-            f"Document Content (first 10000 characters):\n{sanitize_text(text[:10000])}\n\n"
-            f"Output Format: Return a JSON object with the structure:\n"
-            f"{{\"methodological_gaps\": [{{\"description\": \"\", \"suggestion\": \"\"}}], "
-            f"\"unaddressed_questions\": [{{\"description\": \"\", \"suggestion\": \"\"}}], "
-            f"\"source_gaps\": [{{\"description\": \"\", \"suggestion\": \"\"}}]}}"
+            f"Analyze the following literature review text to identify 5-8 major research gaps. "
+            f"Focus on under-explored areas, methodological limitations, unanswered questions, and future directions. "
+            f"Text: {text[:4000]}...\n\n"  # Truncate for prompt length; full text available in context
+            f"Output ONLY a valid JSON object with a 'gaps' key containing an array of objects. "
+            f"Each gap object must have: 'title' (concise 1-sentence summary of the gap) and 'description' (detailed explanation with evidence from text, 2-4 sentences). "
+            f"Example: {{\"gaps\": [{{\"title\": \"Gap in X\", \"description\": \"Detailed explanation...\"}}]}}"
         ),
-        expected_output="A JSON object containing gap analysis with methodological_gaps, unaddressed_questions, and source_gaps.",
-        agent=gap_analyzer,
-        output_file=os.path.join(OUTPUT_DIR, f"raw_gaps_{document_id}.json")
+        expected_output="JSON object with 'gaps' array of objects containing 'title' and 'description' keys.",
+        agent=gap_analyzer_agent,
+        output_file=os.path.join(OUTPUT_DIR, f'gaps_{document_id}.json')
     )
 
-    # Task 2: Format gaps
-    format_gaps_task = Task(
-        description=(
-            f"Take the raw gap analysis from the previous task and format it into a clean JSON structure. "
-            f"Ensure descriptions are concise (1-2 sentences) and suggestions are actionable (1 sentence). "
-            f"Remove any redundant or malformed content. "
-            f"If no gaps are found in a category, return an empty list for that category. "
-            f"Output Format: Return a JSON object with the structure:\n"
-            f"{{\"gaps\": {{\"methodological_gaps\": [{{\"description\": \"\", \"suggestion\": \"\"}}], "
-            f"\"unaddressed_questions\": [{{\"description\": \"\", \"suggestion\": \"\"}}], "
-            f"\"source_gaps\": [{{\"description\": \"\", \"suggestion\": \"\"}}]}}}}"
-        ),
-        expected_output="A clean JSON object with structured gap analysis.",
-        agent=gap_formatter,
-        output_file=os.path.join(OUTPUT_DIR, f"gaps_{document_id}.json")
-    )
-
-    # Create and run the crew
-    crew = Crew(
-        agents=[gap_analyzer, gap_formatter],
-        tasks=[analyze_gaps_task, format_gaps_task],
-        verbose=True
-    )
-
+    # Run crew with single agent and task
     try:
+        crew = Crew(
+            agents=[gap_analyzer_agent],
+            tasks=[analyze_gaps_task],
+            verbose=True
+        )
         crew.kickoff()
-        output_file = os.path.join(OUTPUT_DIR, f"gaps_{document_id}.json")
+
+        # Clean and validate output
+        output_file = os.path.join(OUTPUT_DIR, f'gaps_{document_id}.json')
         json_error = clean_json_file(output_file)
         if json_error:
-            logger.error(f"Failed to clean JSON file: {json_error}")
-            return {"error": f"Failed to clean JSON file: {json_error}"}
-        
+            logger.error(f"JSON cleaning error for {output_file}: {json_error}")
+            return {"error": f"Failed to process gaps: {json_error}"}
+
         with open(output_file, 'r', encoding='utf-8') as f:
-            result = json.load(f)
-        
-        # Ensure all expected keys exist, even if empty
-        if not result.get("gaps"):
-            result["gaps"] = {
-                "methodological_gaps": [],
-                "unaddressed_questions": [],
-                "source_gaps": []
-            }
-        else:
-            result["gaps"] = {
-                "methodological_gaps": result["gaps"].get("methodological_gaps", []),
-                "unaddressed_questions": result["gaps"].get("unaddressed_questions", []),
-                "source_gaps": result["gaps"].get("source_gaps", [])
-            }
-        
-        logger.info(f"Generated gap analysis for document_id {document_id}: {json.dumps(result, indent=2)}")
-        return result
+            result_data = json.load(f)
+
+        gaps = result_data.get('gaps', [])
+        if not isinstance(gaps, list) or not gaps:
+            return {"error": "No valid gaps identified in analysis."}
+
+        logger.info(f"Successfully identified {len(gaps)} gaps for document {document_id}")
+        return {"gaps": gaps}
     except Exception as e:
-        logger.error(f"Error running gap finder crew for document_id {document_id}: {e}")
-        return {"error": str(e)}
+        logger.error(f"Error running gap finder crew: {e}")
+        return {"error": f"Analysis failed: {str(e)}"}
 
 @app.route('/gap_finder', methods=['GET', 'POST'])
 def gap_finder():
     result = None
     error = None
-    document_id = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
     if request.method == 'POST':
-        if 'file' not in request.files or not request.files['file'].filename:
-            error = "Please upload a PDF file."
-            logger.warning("No file uploaded in POST request")
+        if 'file' not in request.files:
+            error = "No file uploaded."
+            logger.warning("No file in request")
         else:
             file = request.files['file']
-            if not file.filename.lower().endswith('.pdf'):
+            if file.filename == '':
+                error = "No file selected."
+                logger.warning("Empty filename")
+            elif not file.filename.lower().endswith('.pdf'):
                 error = "Only PDF files are supported."
                 logger.warning(f"Invalid file type uploaded: {file.filename}")
             else:
+                # Generate unique document ID
+                document_id = str(uuid.uuid4())
                 filename = secure_filename(file.filename)
-                file_path = os.path.join(UPLOAD_DIR, filename)
+                file_path = os.path.join(UPLOAD_DIR, f"{document_id}_{filename}")
                 file.save(file_path)
                 logger.info(f"File saved to {file_path}")
                 
@@ -280,4 +239,4 @@ def download_gaps(document_id):
         return jsonify({"error": f"Failed to download gap analysis: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)  # Use different port to avoid conflict with app.py
+    app.run(debug=True, port=5000)  # Use different port to avoid conflict with app.py
