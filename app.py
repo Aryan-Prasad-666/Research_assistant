@@ -10,15 +10,16 @@ from typing import Dict, TypedDict, Optional
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.output_parsers import CommaSeparatedListOutputParser
 from langchain_cohere import ChatCohere
 from langchain.prompts import PromptTemplate
-from functools import lru_cache
 import logging
 from datetime import datetime
 import io
 from openai import OpenAI
 from supermemory import Supermemory
+import PyPDF2 
+import uuid
+from werkzeug.utils import secure_filename 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ gemini_llm = LLM(
     api_key=gemini_key,
     temperature=0.7
 )
+
 llm_groq = ChatGroq(
     model="openai/gpt-oss-120b",
     api_key=groq_key,
@@ -83,21 +85,35 @@ Respond only with pure text. Do not use any special symbols, markdown, or format
 """
 )
 
-OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'outputs')
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# --- Directory Setup ---
+OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'outputs') # For flowcharts, knowledge hub
+GAP_OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'gaps') # <-- New: For Gap Finder results
+UPLOAD_DIR = os.path.join(os.getcwd(), 'Uploads') # <-- New: For Gap Finder PDF uploads
 
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(GAP_OUTPUT_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# --- Utility Functions ---
 MAX_FILES = 30
-def cleanup_old_files():
+def cleanup_old_files(directory):
+    """Clean up old files in a specific directory."""
     files = sorted(
-        [os.path.join(OUTPUT_DIR, f) for f in os.listdir(OUTPUT_DIR)],
+        [os.path.join(directory, f) for f in os.listdir(directory)],
         key=os.path.getmtime
     )
     if len(files) > MAX_FILES:
         for old in files[:-MAX_FILES]:
             try:
                 os.remove(old)
-            except Exception:
-                pass
+                logger.info(f"Removed old file: {old} from {directory}")
+            except Exception as e:
+                logger.warning(f"Failed to remove old file {old} from {directory}: {e}")
+
+# Consolidated cleanup function for all output directories
+def run_cleanup():
+    cleanup_old_files(OUTPUT_DIR)
+    cleanup_old_files(GAP_OUTPUT_DIR)
 
 def extract_json(content: str) -> str:
     """Extract the first JSON object from raw text safely."""
@@ -107,10 +123,11 @@ def extract_json(content: str) -> str:
     return match.group(1).strip() if match else content.strip()
 
 def clean_json_file(file_path):
+    """Clean and validate JSON file content."""
     try:
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return f"JSON file {file_path} is missing or empty"
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f: # Added encoding for robustness
             content = f.read().strip()
         if not content:
             return f"JSON file {file_path} is empty after stripping"
@@ -119,7 +136,7 @@ def clean_json_file(file_path):
             json.loads(cleaned_content)
         except json.JSONDecodeError as e:
             return f"Invalid JSON in {file_path} after cleaning: {str(e)}"
-        with open(file_path, 'w') as f:
+        with open(file_path, 'w', encoding='utf-8') as f: # Added encoding for robustness
             f.write(cleaned_content)
         return None
     except Exception as e:
@@ -152,7 +169,87 @@ def render_with_kroki(mermaid_code, variant, fmt):
             f.write(response.text)
     return f"static/outputs/{variant[f'{fmt}_file']}"
 
-# Flowchart Generator Logic
+# --- GAP FINDER SPECIFIC FUNCTIONS ---
+
+def extract_text_from_pdf(file_path: str) -> Optional[str]:
+    """Extract text from a PDF file."""
+    try:
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
+            for page in pdf_reader.pages:
+                page_text = page.extract_text() or ""
+                text += page_text + "\n"
+        logger.info(f"Successfully extracted text from PDF: {file_path}")
+        return text.strip() if text.strip() else None
+    except Exception as e:
+        logger.error(f"Error extracting text from PDF {file_path}: {e}")
+        return None
+
+def sanitize_text(text: str) -> str:
+    """Replace or remove problematic Unicode characters."""
+    if not isinstance(text, str):
+        return text
+    text = text.replace('\u2011', '-')
+    text = re.sub(r'[^\x00-\x7F]+', '', text)
+    return text
+
+# Single Main Gap Analyzer Agent
+gap_analyzer_agent = Agent(
+    role='Research Gap Analyzer',
+    goal='Analyze uploaded literature review text to identify key research gaps, under-explored areas, and opportunities for future work. Output directly as structured JSON.',
+    backstory='You are an expert academic analyst specializing in literature reviews. You identify gaps by examining themes, methodologies, findings, and limitations in the provided text.',
+    verbose=True,
+    llm=gemini_llm,
+    tools=[]
+)
+
+def run_gap_finder_crew(text: str, document_id: str) -> Dict:
+    """Run the Gap Finder crew with a single main agent to analyze and format gaps."""
+    cleanup_old_files(GAP_OUTPUT_DIR)
+
+    analyze_gaps_task = Task(
+        description=(
+            f"Analyze the following literature review text to identify 5-8 major research gaps. "
+            f"Focus on under-explored areas, methodological limitations, unanswered questions, and future directions. "
+            f"Text: {text[:4000]}...\n\n"
+            f"Output ONLY a valid JSON object with a 'gaps' key containing an array of objects. "
+            f"Each gap object must have: 'title' (concise 1-sentence summary of the gap) and 'description' (detailed explanation with evidence from text, 2-4 sentences). "
+            f"Example: {{\"gaps\": [{{\"title\": \"Gap in X\", \"description\": \"Detailed explanation...\"}}]}}"
+        ),
+        expected_output="JSON object with 'gaps' array of objects containing 'title' and 'description' keys.",
+        agent=gap_analyzer_agent,
+        output_file=os.path.join(GAP_OUTPUT_DIR, f'gaps_{document_id}.json')
+    )
+
+    try:
+        crew = Crew(
+            agents=[gap_analyzer_agent],
+            tasks=[analyze_gaps_task],
+            verbose=True
+        )
+        crew.kickoff()
+
+        output_file = os.path.join(GAP_OUTPUT_DIR, f'gaps_{document_id}.json')
+        json_error = clean_json_file(output_file)
+        if json_error:
+            logger.error(f"JSON cleaning error for {output_file}: {json_error}")
+            return {"error": f"Failed to process gaps: {json_error}"}
+
+        with open(output_file, 'r', encoding='utf-8') as f:
+            result_data = json.load(f)
+
+        gaps = result_data.get('gaps', [])
+        if not isinstance(gaps, list) or not gaps:
+            return {"error": "No valid gaps identified in analysis."}
+
+        logger.info(f"Successfully identified {len(gaps)} gaps for document {document_id}")
+        return {"gaps": gaps}
+    except Exception as e:
+        logger.error(f"Error running gap finder crew: {e}")
+        return {"error": f"Analysis failed: {str(e)}"}
+
+# --- Flowchart Generator Logic (Kept as is) ---
 mermaid_generator = Agent(
     role='Mermaid Code Generator',
     goal='Generate six distinct Mermaid flowchart interpretations with unique logical structures based on a user-provided description.',
@@ -172,7 +269,7 @@ flowchart_renderer = Agent(
 )
 
 def run_crew(flowchart_description):
-    cleanup_old_files()
+    cleanup_old_files(OUTPUT_DIR) # Use the specific cleanup
     variants = [
         {'id': 1, 'name': 'Variant 1', 'json_file': 'mermaid_code_variant1.json', 'svg_file': 'flowchart_output_variant1.svg', 'png_file': 'flowchart_output_variant1.png'},
         {'id': 2, 'name': 'Variant 2', 'json_file': 'mermaid_code_variant2.json', 'svg_file': 'flowchart_output_variant2.svg', 'png_file': 'flowchart_output_variant2.png'},
@@ -238,6 +335,7 @@ def run_crew(flowchart_description):
             result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': str(e)})
     return result_json
 
+# --- Debate Workflow Logic (Kept as is) ---
 def sanitize_text(text):
     return re.sub(r'\*\*(.*?)\*\*', r'\1', text)
 
@@ -335,13 +433,13 @@ def create_debate_workflow(debate_topic, max_turns):
 
     return workflow, classes
 
-# Knowledge Hub Agents (from knowledge.py)
+# --- Knowledge Hub Agents (Kept as is) ---
 youtube_agent = Agent(
     role='YouTube Resource Fetcher',
     goal='Fetch relevant YouTube videos, tutorials, lectures, and explainers based on the query using web search.',
     backstory='You are an expert in sourcing educational video content from YouTube using web search tools for research and learning purposes.',
     verbose=True,
-    llm=llm_gemini,
+    llm=gemini_llm,
     tools=[serper_tool]
 )
 
@@ -350,7 +448,7 @@ serper_agent = Agent(
     goal='Search the web for blogs, online courses (MOOCs), tutorials, documentation, and Q&A forums using Google search, returning the top 5 most relevant results.',
     backstory='You are a web researcher skilled in aggregating diverse online resources from trusted sources.',
     verbose=True,
-    llm=llm_gemini,
+    llm=gemini_llm,
     tools=[serper_tool]
 )
 
@@ -359,7 +457,7 @@ arxiv_agent = Agent(
     goal='Pull recent or highly cited research papers, abstracts, categories, and download links from arXiv.',
     backstory='You are an academic paper scout focused on scientific and technical publications.',
     verbose=True,
-    llm=llm_gemini,
+    llm=gemini_llm,
     tools=[arxiv_tool]
 )
 
@@ -368,13 +466,13 @@ aggregator_agent = Agent(
     goal='Merge and organize results from YouTube, Serper, and arXiv tasks into categorized sections, formatted as HTML lists for frontend display.',
     backstory='You are a knowledge integrator that combines multi-source data into a cohesive, display-ready structure.',
     verbose=True,
-    llm=llm_gemini,
+    llm=gemini_llm,
     tools=[]
 )
 
 def run_knowledge_crew(query):
     """Run the Knowledge Hub crew to fetch and aggregate resources for the given query."""
-    cleanup_old_files()
+    cleanup_old_files(OUTPUT_DIR) # Use the specific cleanup
 
     # Define Tasks with structured output expectations
     youtube_task = Task(
@@ -405,25 +503,25 @@ def run_knowledge_crew(query):
     def clean_task_output(file_path):
         try:
             if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f: # Added encoding
                     raw_content = f.read()
                     logger.info(f"Raw content of {file_path}: {raw_content[:200]}...")
                     cleaned_content = extract_json(raw_content)
                     json.loads(cleaned_content)  # Validate JSON
-                    with open(file_path, 'w') as f:
+                    with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
                         f.write(cleaned_content)
                     logger.info(f"Cleaned JSON for {file_path}: {cleaned_content[:200]}...")
             else:
                 logger.warning(f"File not found: {file_path}")
-                with open(file_path, 'w') as f:
+                with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
                     f.write('[]')  # Write empty array as fallback
         except json.JSONDecodeError as e:
             logger.error(f"JSON parsing error in {file_path}: {str(e)}")
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
                 f.write('[]')  # Write empty array as fallback
         except Exception as e:
             logger.error(f"Error cleaning {file_path}: {str(e)}")
-            with open(file_path, 'w') as f:
+            with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
                 f.write('[]')  # Write empty array as fallback
 
     # Run tasks and clean outputs
@@ -468,7 +566,7 @@ def run_knowledge_crew(query):
         # Parse and clean aggregated results
         aggregated_file = os.path.join(OUTPUT_DIR, 'aggregated_results.json')
         if os.path.exists(aggregated_file):
-            with open(aggregated_file, 'r') as f:
+            with open(aggregated_file, 'r', encoding='utf-8') as f: # Added encoding
                 raw_content = f.read()
                 logger.info(f"Raw content of aggregated_results.json: {raw_content[:200]}...")
                 cleaned_content = extract_json(raw_content)
@@ -485,6 +583,8 @@ def run_knowledge_crew(query):
     except Exception as e:
         logger.error(f"Error running knowledge crew: {e}")
         return {"error": f"Failed to fetch resources: {str(e)}"}
+
+# --- Flask Routes ---
 
 @app.route('/')
 def index():
@@ -515,15 +615,13 @@ def chat():
 
         # Call Groq via proxy (auto-handles memory injection on top of our prompt)
         response = groq_client.chat.completions.create(
-            model="openai/gpt-oss-120b",  # Or swap to llama3-70b-8192 for faster research tasks
+            model="openai/gpt-oss-120b",
             messages=messages,
             max_tokens=1000,
-            temperature=0.7  # Balanced for research: creative yet factual
+            temperature=0.7
         )
 
         ai_response = response.choices[0].message.content
-
-        # Proxy auto-stores exchanges, so no manual add needed
 
         return jsonify({'response': ai_response})
 
@@ -548,6 +646,87 @@ def flowchart_generator():
             elif any('error' in v for v in result['variants']):
                 error = "Some variants failed. See details below."
     return render_template('flowchart_generator.html', result=result or {}, error=error)
+
+# --- NEW: GAP FINDER ROUTE ---
+@app.route('/gap_finder', methods=['GET', 'POST'])
+def gap_finder():
+    result = None
+    error = None
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            error = "No file uploaded."
+            logger.warning("No file in request")
+        else:
+            file = request.files['file']
+            if file.filename == '':
+                error = "No file selected."
+                logger.warning("Empty filename")
+            elif not file.filename.lower().endswith('.pdf'):
+                error = "Only PDF files are supported."
+                logger.warning(f"Invalid file type uploaded: {file.filename}")
+            else:
+                document_id = str(uuid.uuid4())
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(UPLOAD_DIR, f"{document_id}_{filename}")
+                file.save(file_path)
+                logger.info(f"File saved to {file_path}")
+                
+                run_cleanup() # Clean up all directories
+
+                text = extract_text_from_pdf(file_path)
+                if not text:
+                    error = "Failed to extract text from PDF."
+                    logger.error(f"Failed to extract text from PDF: {file_path}")
+                else:
+                    gaps = run_gap_finder_crew(text, document_id)
+                    if "error" in gaps:
+                        error = f"Error processing document: {gaps['error']}"
+                        logger.error(f"Processing error for document_id {document_id}: {error}")
+                    else:
+                        result = {
+                            "gaps": gaps["gaps"],
+                            "document_id": document_id
+                        }
+                        # Save result with document_id (already handled inside run_gap_finder_crew, but saving the final consolidated result object again for robustness)
+                        output_file = os.path.join(GAP_OUTPUT_DIR, f"gaps_{document_id}.json")
+                        try:
+                            with open(output_file, 'w', encoding='utf-8') as f:
+                                json.dump(result, f, indent=4, ensure_ascii=False)
+                            logger.info(f"Saved gap analysis to {output_file}")
+                        except Exception as e:
+                            error = f"Failed to save gap analysis file: {str(e)}"
+                            logger.error(f"Error saving gap analysis to {output_file}: {e}")
+    
+    logger.info(f"Rendering gap_finder.html with result: {result}, error: {error}")
+    return render_template('gap_finder.html', result=result or {}, error=error, generation_date=datetime.now())
+
+# --- NEW: GAP DOWNLOAD ROUTE ---
+@app.route('/download/gaps/<document_id>.json')
+def download_gaps(document_id):
+    try:
+        file_path = os.path.join(GAP_OUTPUT_DIR, f"gaps_{document_id}.json")
+        logger.info(f"Attempting to download file: {file_path}")
+        
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return jsonify({"error": f"Gap analysis file for document ID {document_id} not found"}), 404
+        
+        if not os.access(file_path, os.R_OK):
+            logger.error(f"No read permission for file: {file_path}")
+            return jsonify({"error": f"No read permission for gap analysis file {document_id}"}), 403
+        
+        file_size = os.path.getsize(file_path)
+        logger.info(f"File size for {file_path}: {file_size} bytes")
+        
+        return send_file(
+            file_path,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name=f"gaps_{document_id}.json"
+        )
+    except Exception as e:
+        logger.error(f"Error downloading gap analysis for document_id {document_id}: {e}")
+        return jsonify({"error": f"Failed to download gap analysis: {str(e)}"}), 500
 
 @app.route('/multi-agent-debate', methods=['GET', 'POST'])
 def multi_agent_debate():
