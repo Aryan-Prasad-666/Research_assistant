@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Validate environment variables
-gemini_key = os.getenv('GEMINI_API_KEY')
+gemini_key = os.getenv('ARYAN_GEMINI_KEY')
 serper_key = os.getenv('SERPER_API_KEY')
 if not all([gemini_key, serper_key]):
     raise ValueError("Missing one or more API keys in environment variables (GEMINI_API_KEY, SERPER_API_KEY)")

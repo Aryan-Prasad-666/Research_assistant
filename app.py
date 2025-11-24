@@ -4,6 +4,7 @@ import os
 import re
 import requests
 from crewai import Agent, Crew, LLM, Task
+from crewai_tools import SerperDevTool, ArxivPaperTool
 from dotenv import load_dotenv
 from typing import Dict, TypedDict, Optional
 from langgraph.graph import StateGraph, END
@@ -30,6 +31,8 @@ groq_key = os.getenv('groq_api_key')
 gemini_key = os.getenv('ARYAN_GEMINI_KEY')
 cohere_key = os.getenv('COHERE_API_KEY')
 supermemory_key = os.getenv('ARYAN_SUPERMEMORY_API_KEY')
+serper_key = os.getenv('SERPER_API_KEY')
+
 if not all([groq_key, gemini_key, cohere_key, supermemory_key]):
     raise ValueError("Missing one or more API keys in environment variables")
 
@@ -52,6 +55,9 @@ llm_cohere = ChatCohere(
     api_key=cohere_key,
     temperature=0.6
 )
+
+serper_tool = SerperDevTool(api_key=serper_key, n_results=5) 
+arxiv_tool = ArxivPaperTool()
 
 client = Supermemory(api_key=supermemory_key)
 groq_client = OpenAI(
@@ -329,6 +335,157 @@ def create_debate_workflow(debate_topic, max_turns):
 
     return workflow, classes
 
+# Knowledge Hub Agents (from knowledge.py)
+youtube_agent = Agent(
+    role='YouTube Resource Fetcher',
+    goal='Fetch relevant YouTube videos, tutorials, lectures, and explainers based on the query using web search.',
+    backstory='You are an expert in sourcing educational video content from YouTube using web search tools for research and learning purposes.',
+    verbose=True,
+    llm=llm_gemini,
+    tools=[serper_tool]
+)
+
+serper_agent = Agent(
+    role='Web Resource Fetcher',
+    goal='Search the web for blogs, online courses (MOOCs), tutorials, documentation, and Q&A forums using Google search, returning the top 5 most relevant results.',
+    backstory='You are a web researcher skilled in aggregating diverse online resources from trusted sources.',
+    verbose=True,
+    llm=llm_gemini,
+    tools=[serper_tool]
+)
+
+arxiv_agent = Agent(
+    role='arXiv Resource Fetcher',
+    goal='Pull recent or highly cited research papers, abstracts, categories, and download links from arXiv.',
+    backstory='You are an academic paper scout focused on scientific and technical publications.',
+    verbose=True,
+    llm=llm_gemini,
+    tools=[arxiv_tool]
+)
+
+aggregator_agent = Agent(
+    role='Resource Aggregator',
+    goal='Merge and organize results from YouTube, Serper, and arXiv tasks into categorized sections, formatted as HTML lists for frontend display.',
+    backstory='You are a knowledge integrator that combines multi-source data into a cohesive, display-ready structure.',
+    verbose=True,
+    llm=llm_gemini,
+    tools=[]
+)
+
+def run_knowledge_crew(query):
+    """Run the Knowledge Hub crew to fetch and aggregate resources for the given query."""
+    cleanup_old_files()
+
+    # Define Tasks with structured output expectations
+    youtube_task = Task(
+        description=f"Use Google search with 'site:youtube.com' to find tutorials, lectures, and explainers on '{query}'. Fetch top 5 results with titles, links, and brief descriptions. Return results as a JSON array of objects with keys: title, link, description.",
+        expected_output='JSON array of YouTube resources, e.g., [{"title": "Video Title", "link": "url", "description": "desc"}]',
+        agent=youtube_agent,
+        output_file=os.path.join(OUTPUT_DIR, 'youtube_results.json'),
+        callback=lambda x: logger.info(f"YouTube task output: {x}")
+    )
+
+    serper_task = Task(
+        description=f"Use Google search to find blogs, MOOCs, tutorials, docs, and forums on '{query}'. Fetch top 5 relevant results with titles, snippets, and links. Return results as a JSON array of objects with keys: title, snippet, link.",
+        expected_output='JSON array of web resources, e.g., [{"title": "Blog Title", "snippet": "snippet", "link": "url"}]',
+        agent=serper_agent,
+        output_file=os.path.join(OUTPUT_DIR, 'serper_results.json'),
+        callback=lambda x: logger.info(f"Serper task output: {x}")
+    )
+
+    arxiv_task = Task(
+        description=f"Query arXiv for papers on '{query}'. Fetch top 5 recent or highly cited papers with titles, authors, abstracts, categories, and PDF links. Return results as a JSON array of objects with keys: title, authors, abstract, categories, pdf_link.",
+        expected_output='JSON array of arXiv papers, e.g., [{"title": "Paper Title", "authors": "Author List", "abstract": "abstract", "categories": "category", "pdf_link": "url"}]',
+        agent=arxiv_agent,
+        output_file=os.path.join(OUTPUT_DIR, 'arxiv_results.json'),
+        callback=lambda x: logger.info(f"arXiv task output: {x}")
+    )
+
+    # Clean JSON outputs before aggregation
+    def clean_task_output(file_path):
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    raw_content = f.read()
+                    logger.info(f"Raw content of {file_path}: {raw_content[:200]}...")
+                    cleaned_content = extract_json(raw_content)
+                    json.loads(cleaned_content)  # Validate JSON
+                    with open(file_path, 'w') as f:
+                        f.write(cleaned_content)
+                    logger.info(f"Cleaned JSON for {file_path}: {cleaned_content[:200]}...")
+            else:
+                logger.warning(f"File not found: {file_path}")
+                with open(file_path, 'w') as f:
+                    f.write('[]')  # Write empty array as fallback
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error in {file_path}: {str(e)}")
+            with open(file_path, 'w') as f:
+                f.write('[]')  # Write empty array as fallback
+        except Exception as e:
+            logger.error(f"Error cleaning {file_path}: {str(e)}")
+            with open(file_path, 'w') as f:
+                f.write('[]')  # Write empty array as fallback
+
+    # Run tasks and clean outputs
+    crew = Crew(
+        agents=[youtube_agent, serper_agent, arxiv_agent],
+        tasks=[youtube_task, serper_task, arxiv_task],
+        verbose=True
+    )
+    crew.kickoff()
+
+    # Clean YouTube, Serper, and arXiv results before aggregation
+    clean_task_output(os.path.join(OUTPUT_DIR, 'youtube_results.json'))
+    clean_task_output(os.path.join(OUTPUT_DIR, 'serper_results.json'))
+    clean_task_output(os.path.join(OUTPUT_DIR, 'arxiv_results.json'))
+
+    aggregate_task = Task(
+        description=(
+            f"Aggregate results from YouTube, Serper, and arXiv tasks into a single structured JSON with categories: Tutorials (YouTube), Blogs & MOOCs (Serper), Research (arXiv). "
+            f"For each category, format the results as an HTML unordered list (<ul>) with each item as an <li> containing relevant details (e.g., title, link, description or summary). "
+            f"Ensure links are clickable (<a href>). If a category has no results, include an empty list (<ul></ul>). "
+            f"Example: "
+            f'{{"Tutorials": "<ul><li><a href=\'url\'>Video Title</a>: desc</li></ul>", '
+            f'"Research": "<ul><li><a href=\'url\'>Paper Title</a>: abstract</li></ul>", '
+            f'"Blogs & MOOCs": "<ul><li><a href=\'url\'>Blog Title</a>: snippet</li></ul>"}}'
+        ),
+        expected_output="JSON object with categorized resources formatted as HTML lists.",
+        agent=aggregator_agent,
+        context=[youtube_task, serper_task, arxiv_task],
+        output_file=os.path.join(OUTPUT_DIR, 'aggregated_results.json'),
+        callback=lambda x: logger.info(f"Aggregate task output: {x}")
+    )
+
+    # Run aggregation
+    try:
+        crew = Crew(
+            agents=[aggregator_agent],
+            tasks=[aggregate_task],
+            verbose=True
+        )
+        crew.kickoff()
+
+        # Parse and clean aggregated results
+        aggregated_file = os.path.join(OUTPUT_DIR, 'aggregated_results.json')
+        if os.path.exists(aggregated_file):
+            with open(aggregated_file, 'r') as f:
+                raw_content = f.read()
+                logger.info(f"Raw content of aggregated_results.json: {raw_content[:200]}...")
+                cleaned_content = extract_json(raw_content)
+                logger.info(f"Cleaned content of aggregated_results.json: {cleaned_content[:200]}...")
+                result = json.loads(cleaned_content)
+            logger.info(f"Aggregated results: {result}")
+            return result
+        else:
+            logger.error(f"Aggregated results file not found: {aggregated_file}")
+            return {"error": "Aggregated results file not found"}
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error in aggregated_results.json: {str(e)}")
+        return {"error": f"Failed to parse aggregated results: {str(e)}"}
+    except Exception as e:
+        logger.error(f"Error running knowledge crew: {e}")
+        return {"error": f"Failed to fetch resources: {str(e)}"}
+
 @app.route('/')
 def index():
     return render_template('home.html')
@@ -345,24 +502,28 @@ def chat():
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
 
+        # Format LangChain prompt (proxy auto-injects memory behind the scenes)
         system_prompt = research_prompt.format(
             user_query=user_message
         )
 
+        # Build messages with system prompt
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
+        # Call Groq via proxy (auto-handles memory injection on top of our prompt)
         response = groq_client.chat.completions.create(
-            model="openai/gpt-oss-120b",  
+            model="openai/gpt-oss-120b",  # Or swap to llama3-70b-8192 for faster research tasks
             messages=messages,
             max_tokens=1000,
-            temperature=0.7  
+            temperature=0.7  # Balanced for research: creative yet factual
         )
 
         ai_response = response.choices[0].message.content
 
+        # Proxy auto-stores exchanges, so no manual add needed
 
         return jsonify({'response': ai_response})
 
@@ -446,6 +607,24 @@ def multi_agent_debate():
             logger.error(f"Error running debate: {e}")
             return render_template('multi_agent_debate.html', error=str(e), generation_date=datetime.now())
     return render_template('multi_agent_debate.html', conversation=None, generation_date=None)
+
+@app.route('/knowledge_hub', methods=['GET', 'POST'])
+def knowledge_hub():
+    """Handle Knowledge Hub requests and render the results."""
+    result = None
+    error = None
+    query = None
+    if request.method == 'POST':
+        query = request.form.get('query')
+        if not query:
+            error = "Please provide a search query."
+        else:
+            result = run_knowledge_crew(query)
+            logger.info(f"Result returned to template: {result}")
+            if 'error' in result:
+                error = result['error']
+                result = None
+    return render_template('knowledge_hub.html', result=result, error=error, query=query, generation_date=datetime.now(), debug=app.debug)
 
 @app.route('/download/<file_type>/<variant_id>')
 def download(file_type, variant_id):
