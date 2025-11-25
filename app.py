@@ -365,26 +365,26 @@ def run_crew(flowchart_description):
     result_json = {'variants': []}
     for variant in variants:
         generate_mermaid_task = Task(
-            description=(
-                f"Generate a unique Mermaid flowchart in JSON format based on the given research process description.\n\n"
-                f"Input Description: {flowchart_description}\n"
-                f"Variant: {variant['id']} of 6 — ensure each variant has a distinct logical structure (e.g., linear, branching, parallel, or cyclic) suitable for research workflows.\n\n"
-                f"Mermaid Syntax Requirements:\n"
-                f"- Start with 'graph TD;'.\n"
-                f"- Always wrap every node label in quotes, regardless of content. Example: A[\"Start\"], B{{\"x > y?\"}}, C[\"Return -1 (Not Found)\"].\n"
-                f"- Use square brackets for process/statement nodes (e.g., A[\"Do something\"]).\n"
-                f"- Use curly braces for decision/condition nodes (e.g., B{{\"Check condition?\"}}).\n"
-                f"- Use '-->' for all connections (no extra dashes).\n"
-                f"- Never leave raw text or symbols (like /, &, ==, etc..) outside of quotes inside node labels.\n"
-                f"- Ensure all brackets and quotes are properly balanced.\n\n"
-                f"Output Format:\n"
-                f"Return a JSON object containing one key 'mermaid_code' with the Mermaid flowchart string.\n"
-                f"Example: {{\"mermaid_code\": \"graph TD; A[Start] --> B[Process Data] --> C[End]\"}}"
-            ),
-            expected_output="A JSON object with valid Mermaid flowchart code under 'mermaid_code'.",
-            agent=mermaid_generator,
-            output_file=os.path.join(OUTPUT_DIR, variant['json_file'])
-        )
+                    description=(
+                        f"Generate a unique Mermaid flowchart in JSON format based on the given research process description.\n\n"
+                        f"Input Description: {flowchart_description}\n"
+                        f"Variant: {variant['id']} of 6 — ensure each variant has a distinct logical structure (e.g., linear, branching, parallel, or cyclic) suitable for research workflows.\n\n"
+                        f"STRICT OUTPUT REQUIREMENT:\n"
+                        f"You MUST output ONLY the raw JSON object. Do not include any introductory text, markdown fences (```json or ```), or explanations before or after the JSON object.\n"
+                        f"The value for 'mermaid_code' MUST be a single, valid Mermaid string.\n\n"
+                        f"Mermaid Syntax Requirements for VALID CODE:\n"
+                        f"1. Start with 'graph TD;' or 'graph LR;'.\n"
+                        f"2. All node labels MUST be enclosed in quotes (e.g., A[\"Start Process\"], B{{\"Decision Point?\"}}).\n"
+                        f"3. Conditional links must be correctly labeled: e.g., B -- Yes --> C;\n"
+                        f"4. Node IDs must be alphanumeric and simple (e.g., N1, P2).\n"
+                        f"5. Ensure all quotes and parentheses are balanced.\n\n"
+                        f"Output Format (STRICTLY ADHERE TO THIS):\n"
+                        f"{{\"mermaid_code\": \"graph TD; A[\"Start Research\"] --> B{{\"Review Complete?\"}}; B -- Yes --> C[\"Define Methodology\"]; B -- No --> A; C --> D[\"End\"]\"}}"
+                    ),
+                    expected_output="A raw JSON object with valid Mermaid flowchart code under 'mermaid_code'.",
+                    agent=mermaid_generator,
+                    output_file=os.path.join(OUTPUT_DIR, variant['json_file'])
+                )
         crew = Crew(
             agents=[mermaid_generator],
             tasks=[generate_mermaid_task],
