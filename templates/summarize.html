@@ -4,19 +4,56 @@
 
 {% block extra_css %}
 <style>
+    /* New background for the main content area */
+    .summarizer-page-bg {
+        /* UPDATED BACKGROUND IMAGE */
+        background: url('https://images.pexels.com/photos/7947849/pexels-photo-7947849.jpeg') no-repeat center center fixed;
+        background-size: cover;
+        min-height: calc(100vh - 56px); /* Adjust based on navbar height */
+        padding-top: 2rem;
+        padding-bottom: 4rem;
+        position: relative;
+    }
+
+    .summarizer-page-bg::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(30, 42, 68, 0.75); /* Primary color overlay for scholarly feel */
+        backdrop-filter: blur(2px);
+    }
+    
     .summary-container {
+        position: relative; /* To place the container above the background overlay */
+        z-index: 10;
         max-width: 1000px;
         margin: 2rem auto;
-        padding: 2rem;
-        background-color: #fff;
+        padding: 2.5rem; /* Increased padding */
+        background-color: var(--light-color); /* Use light color for contrast */
         border-radius: 12px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); /* Stronger shadow */
         transition: all 0.3s ease;
+    }
+
+    .summary-container h1, .summary-container .lead {
+        color: var(--primary-color);
+        font-weight: 700;
+    }
+
+    .summary-container .lead {
+        color: var(--dark-color);
     }
 
     .upload-section {
         margin-bottom: 2.5rem;
         text-align: center;
+        padding: 2rem;
+        border: 1px solid var(--secondary-color);
+        border-radius: 10px;
+        background-color: rgba(255, 255, 255, 0.8);
     }
 
     .upload-section input[type="file"] {
@@ -25,32 +62,38 @@
         border-radius: 10px;
         background-color: var(--light-color);
         cursor: pointer;
-        transition: border-color 0.3s ease;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        background-color: #fff;
     }
 
     .upload-section input[type="file"]:hover {
         border-color: var(--accent-color);
+        box-shadow: 0 0 10px rgba(46, 106, 122, 0.3); /* Secondary color glow */
     }
 
     .upload-section .btn-primary {
+        background-color: var(--secondary-color); /* Teal color */
+        border-color: var(--secondary-color);
         padding: 0.75rem 2rem;
         font-size: 1.1rem;
         border-radius: 8px;
-        transition: background-color 0.3s ease, transform 0.2s ease;
+        transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
     }
 
     .upload-section .btn-primary:hover {
-        background-color: #255560;
+        background-color: var(--primary-color); /* Deep Navy Blue on hover */
+        border-color: var(--primary-color);
         transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(30, 42, 68, 0.4);
     }
 
     .loading-spinner {
         display: none;
-        margin: 1rem auto;
+        margin: 1.5rem auto 0; /* Adjusted margin */
         width: 40px;
         height: 40px;
-        border: 4px solid var(--secondary-color);
-        border-top: 4px solid var(--accent-color);
+        border: 4px solid var(--light-color); /* Light ring */
+        border-top: 4px solid var(--accent-color); /* Orange spinning part */
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
@@ -62,43 +105,73 @@
 
     .result-section {
         margin-top: 3rem;
-        padding: 1.5rem;
-        background-color: var(--light-color);
+        padding: 2rem;
+        background-color: #fff; /* White background for result section */
         border-radius: 10px;
-        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-top: 5px solid var(--accent-color); /* Accent top border */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
     .result-section h3 {
         color: var(--primary-color);
         font-weight: 700;
-        margin-bottom: 1.5rem;
-        font-size: 1.75rem;
+        margin-bottom: 2rem;
+        font-size: 2rem;
+        border-bottom: 2px solid var(--secondary-color);
+        padding-bottom: 0.5rem;
     }
 
     .result-box {
         padding: 1.5rem;
         border-radius: 8px;
-        margin-bottom: 2rem;
-        border-left: 5px solid var(--accent-color);
-        background-color: #fff;
+        margin-bottom: 2.5rem;
+        border-left: 5px solid var(--secondary-color); /* Teal left border */
+        background-color: var(--light-color); /* Soft Gray-White background */
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.05);
     }
 
     .result-box h4 {
-        color: var(--secondary-color);
+        color: var(--accent-color); /* Warm Orange for headings */
         font-weight: 600;
         margin-bottom: 1rem;
     }
 
-    .result-box ul {
-        list-style-type: disc;
-        padding-left: 1.75rem;
-        font-size: 1rem;
-        line-height: 1.6;
+    .result-box p {
+        color: var(--dark-color);
+        font-style: italic;
+        margin-bottom: 1rem;
     }
 
+    .result-box ul {
+        list-style-type: none; /* Remove default disc */
+        padding-left: 0;
+        font-size: 1rem;
+        line-height: 1.7;
+    }
+    
+    .result-box ul li {
+        position: relative;
+        padding-left: 1.75rem;
+        margin-bottom: 0.5rem;
+        color: var(--dark-color);
+    }
+    
+    .result-box ul li::before {
+        content: "\f00c"; /* Font Awesome checkmark */
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: var(--secondary-color); /* Teal checkmark */
+        font-size: 0.9rem;
+    }
+
+
     .error-message {
-        background-color: #f8d7da;
-        color: #721c24;
+        background-color: #ffe0e6; /* Light pink background */
+        color: #8b0000; /* Dark red text */
+        border: 1px solid #ffb3c1;
         padding: 1rem;
         border-radius: 8px;
         margin-bottom: 2rem;
@@ -108,7 +181,9 @@
     }
 
     .error-message i {
-        margin-right: 0.5rem;
+        margin-right: 0.75rem;
+        color: #cc0000;
+        font-size: 1.2rem;
     }
 
     .download-btn {
@@ -116,25 +191,33 @@
         padding: 0.75rem 1.5rem;
         font-size: 1rem;
         border-radius: 8px;
-        background-color: var(--secondary-color);
-        color: var(--light-color);
+        background-color: var(--accent-color); /* Warm Orange for the download CTA */
+        border-color: var(--accent-color);
+        color: var(--dark-color); /* Dark text for contrast on orange */
+        font-weight: 600;
         transition: background-color 0.3s ease, transform 0.2s ease;
     }
 
     .download-btn:hover {
-        background-color: #255560;
+        background-color: #e38944; /* Slightly darker orange */
+        border-color: #e38944;
         transform: translateY(-2px);
     }
 
     .generated-date {
-        color: var(--secondary-color);
+        color: var(--light-color); /* Use light color against the background overlay */
         font-size: 0.9rem;
         text-align: center;
         margin-top: 2rem;
         font-style: italic;
+        position: relative;
+        z-index: 10;
     }
 
     @media (max-width: 768px) {
+        .summarizer-page-bg {
+            min-height: calc(100vh - 56px);
+        }
         .summary-container {
             padding: 1.5rem;
             margin: 1rem;
@@ -153,84 +236,83 @@
 {% endblock %}
 
 {% block content %}
-<div class="container summary-container">
-    <h1 class="text-center mb-4" data-translate="summarizer_title">Auto-Summarizer</h1>
-    <p class="text-center mb-5 lead" data-translate="summarizer_description">Upload a PDF research paper or report to generate a concise summary and detect potential biases in tone, framing, and source diversity.</p>
+<div class="summarizer-page-bg">
+    <div class="container summary-container">
+        <h1 class="text-center mb-4" data-translate="summarizer_title">Auto-Summarizer</h1>
+        <p class="text-center mb-5 lead" data-translate="summarizer_description">Upload a PDF research paper or report to generate a concise summary and detect potential biases in tone, framing, and source diversity.</p>
 
-    <!-- Upload Section -->
-    <div class="upload-section">
-        <form method="POST" enctype="multipart/form-data" id="uploadForm">
-            <div class="mb-4">
-                <label for="file" class="form-label fw-bold" data-translate="summarizer_upload_label">Upload PDF Document</label>
-                <input type="file" class="form-control" id="file" name="file" accept=".pdf" required>
+        <div class="upload-section">
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                <div class="mb-4">
+                    <label for="file" class="form-label fw-bold" data-translate="summarizer_upload_label">Upload PDF Document</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".pdf" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="submitBtn" data-translate="summarizer_submit">Generate Summary</button>
+                <div class="loading-spinner" id="loadingSpinner"></div>
+            </form>
+        </div>
+
+        {% if error %}
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i>{{ error }}
             </div>
-            <button type="submit" class="btn btn-primary w-100" id="submitBtn" data-translate="summarizer_submit">Generate Summary</button>
-            <div class="loading-spinner" id="loadingSpinner"></div>
-        </form>
+        {% endif %}
+
+        {% if result.summary %}
+            <div class="result-section animate__animated animate__fadeIn">
+                <h3 data-translate="summarizer_summary_title">Summary</h3>
+                <div class="result-box">
+                    <h4 data-translate="summarizer_key_points">Key Points</h4>
+                    <ul>
+                        {% for point in result.summary.key_points %}
+                            <li>{{ point }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h4 data-translate="summarizer_methodologies">Methodologies</h4>
+                    <ul>
+                        {% for method in result.summary.methodologies %}
+                            <li>{{ method }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h4 data-translate="summarizer_findings">Findings</h4>
+                    <ul>
+                        {% for finding in result.summary.findings %}
+                            <li>{{ finding }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <h3 data-translate="summarizer_bias_title">Bias Analysis</h3>
+                <div class="result-box">
+                    <h4 data-translate="summarizer_tone">Tone</h4>
+                    <p>{{ result.bias_analysis.tone.description }}</p>
+                    <ul>
+                        {% for flag in result.bias_analysis.tone.flags %}
+                            <li>{{ flag }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h4 data-translate="summarizer_framing">Framing</h4>
+                    <p>{{ result.bias_analysis.framing.description }}</p>
+                    <ul>
+                        {% for flag in result.bias_analysis.framing.flags %}
+                            <li>{{ flag }}</li>
+                        {% endfor %}
+                    </ul>
+                    <h4 data-translate="summarizer_source_diversity">Source Diversity</h4>
+                    <p>{{ result.bias_analysis.source_diversity.description }}</p>
+                    <ul>
+                        {% for flag in result.bias_analysis.source_diversity.flags %}
+                            <li>{{ flag }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <a href="/download/summary/{{ result.document_id }}.json" class="btn btn-primary download-btn" data-translate="summarizer_download" id="downloadBtn">Download Summary (JSON)</a>
+            </div>
+
+            <p class="generated-date" data-translate="summarizer_generated_on">Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        {% endif %}
     </div>
-
-    <!-- Error Message -->
-    {% if error %}
-        <div class="error-message">
-            <i class="fas fa-exclamation-circle"></i>{{ error }}
-        </div>
-    {% endif %}
-
-    <!-- Result Section -->
-    {% if result.summary %}
-        <div class="result-section animate__animated animate__fadeIn">
-            <h3 data-translate="summarizer_summary_title">Summary</h3>
-            <div class="result-box">
-                <h4 data-translate="summarizer_key change_points">Key Points</h4>
-                <ul>
-                    {% for point in result.summary.key_points %}
-                        <li>{{ point }}</li>
-                    {% endfor %}
-                </ul>
-                <h4 data-translate="summarizer_methodologies">Methodologies</h4>
-                <ul>
-                    {% for method in result.summary.methodologies %}
-                        <li>{{ method }}</li>
-                    {% endfor %}
-                </ul>
-                <h4 data-translate="summarizer_findings">Findings</h4>
-                <ul>
-                    {% for finding in result.summary.findings %}
-                        <li>{{ finding }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <h3 data-translate="summarizer_bias_title">Bias Analysis</h3>
-            <div class="result-box">
-                <h4 data-translate="summarizer_tone">Tone</h4>
-                <p>{{ result.bias_analysis.tone.description }}</p>
-                <ul>
-                    {% for flag in result.bias_analysis.tone.flags %}
-                        <li>{{ flag }}</li>
-                    {% endfor %}
-                </ul>
-                <h4 data-translate="summarizer_framing">Framing</h4>
-                <p>{{ result.bias_analysis.framing.description }}</p>
-                <ul>
-                    {% for flag in result.bias_analysis.framing.flags %}
-                        <li>{{ flag }}</li>
-                    {% endfor %}
-                </ul>
-                <h4 data-translate="summarizer_source_diversity">Source Diversity</h4>
-                <p>{{ result.bias_analysis.source_diversity.description }}</p>
-                <ul>
-                    {% for flag in result.bias_analysis.source_diversity.flags %}
-                        <li>{{ flag }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <a href="/download/summary/{{ result.document_id }}.json" class="btn btn-primary download-btn" data-translate="summarizer_download" id="downloadBtn">Download Summary (JSON)</a>
-        </div>
-
-        <p class="generated-date" data-translate="summarizer_generated_on">Generated on: {{ generation_date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
-    {% endif %}
 </div>
 {% endblock %}
 
@@ -289,13 +371,43 @@
         }
     };
 
-    // Merge summarizer translations into main translations object
-    document.addEventListener('DOMContentLoaded', () => {
-        // Merge translations
-        Object.keys(summarizerTranslations).forEach(lang => {
-            translations[lang] = { ...translations[lang], ...summarizerTranslations[lang] };
+    // Function to get the current language from URL (copied from base.html for self-containment)
+    function getCurrentLanguage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('lang') || 'en'; // Default to English
+    }
+    
+    // Function to update content based on language (copied from base.html for self-containment)
+    function updateContent(lang) {
+        document.querySelectorAll('[data-translate]').forEach(element => {
+            const key = element.getAttribute('data-translate');
+            // Check in local summarizerTranslations first, then fallback to global translations
+            const currentTranslations = { ...window.translations[lang], ...summarizerTranslations[lang] };
+
+            if (currentTranslations && currentTranslations[key]) {
+                element.textContent = currentTranslations[key];
+            }
         });
+        // Update language selectors
+        document.querySelectorAll('.language-selector').forEach(select => {
+            select.value = lang;
+        });
+    }
+
+    // Initialize content based on URL language
+    document.addEventListener('DOMContentLoaded', () => {
+        // Create a copy of the base translations (if available, assume global scope from base.html context)
+        // This is a common pattern when using block scripts in Jinja/Flask.
+        const globalTranslations = window.translations || {}; 
+        window.translations = { ...globalTranslations };
+        
+        // Merge summarizer translations into a global-like translations object
+        Object.keys(summarizerTranslations).forEach(lang => {
+            window.translations[lang] = { ...window.translations[lang] || {}, ...summarizerTranslations[lang] };
+        });
+
         const currentLang = getCurrentLanguage();
+        // Since updateContent is now defined locally or relies on the updated global translations, call it.
         updateContent(currentLang);
 
         // Spinner handling

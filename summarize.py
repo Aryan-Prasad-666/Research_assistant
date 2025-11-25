@@ -25,7 +25,7 @@ app = Flask(__name__)
 load_dotenv()
 
 # Validate environment variables
-gemini_key = os.getenv('gemini_api_key') or os.getenv('ARYAN_API_KEY')
+gemini_key = os.getenv('ARYAN_GEMINI_KEY') or os.getenv('ARYAN_API_KEY')
 if not gemini_key:
     raise ValueError("Missing Gemini API key in environment variables")
 
@@ -154,7 +154,7 @@ def detect_bias(vector_store: Chroma, document_id: str) -> Dict:
         logger.error(f"Error detecting bias for document_id {document_id}: {e}")
         return {"error": str(e)}
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/summarizer', methods=['GET', 'POST'])
 def summarize():
     result = None
     error = None

@@ -20,6 +20,11 @@ from supermemory import Supermemory
 import PyPDF2 
 import uuid
 from werkzeug.utils import secure_filename 
+from langchain_core.output_parsers import JsonOutputParser
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from PyPDF2 import PdfReader
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -85,16 +90,25 @@ Respond only with pure text. Do not use any special symbols, markdown, or format
 """
 )
 
-# --- Directory Setup ---
-OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'outputs') # For flowcharts, knowledge hub
-GAP_OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'gaps') # <-- New: For Gap Finder results
-UPLOAD_DIR = os.path.join(os.getcwd(), 'Uploads') # <-- New: For Gap Finder PDF uploads
+OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'outputs') 
+GAP_OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'gaps') 
+UPLOAD_DIR = os.path.join(os.getcwd(), 'Uploads') 
+SUMMARY_OUTPUT_DIR = os.path.join(os.getcwd(), 'static', 'summaries')
+VECTOR_DB_DIR = os.path.join(os.getcwd(), 'vector_db')
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(GAP_OUTPUT_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(SUMMARY_OUTPUT_DIR, exist_ok=True)
+os.makedirs(VECTOR_DB_DIR, exist_ok=True)
 
-# --- Utility Functions ---
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    length_function=len
+)
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
 MAX_FILES = 30
 def cleanup_old_files(directory):
     """Clean up old files in a specific directory."""
@@ -110,10 +124,10 @@ def cleanup_old_files(directory):
             except Exception as e:
                 logger.warning(f"Failed to remove old file {old} from {directory}: {e}")
 
-# Consolidated cleanup function for all output directories
 def run_cleanup():
     cleanup_old_files(OUTPUT_DIR)
     cleanup_old_files(GAP_OUTPUT_DIR)
+    cleanup_old_files(SUMMARY_OUTPUT_DIR)
 
 def extract_json(content: str) -> str:
     """Extract the first JSON object from raw text safely."""
@@ -127,7 +141,7 @@ def clean_json_file(file_path):
     try:
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return f"JSON file {file_path} is missing or empty"
-        with open(file_path, 'r', encoding='utf-8') as f: # Added encoding for robustness
+        with open(file_path, 'r', encoding='utf-8') as f: 
             content = f.read().strip()
         if not content:
             return f"JSON file {file_path} is empty after stripping"
@@ -136,7 +150,7 @@ def clean_json_file(file_path):
             json.loads(cleaned_content)
         except json.JSONDecodeError as e:
             return f"Invalid JSON in {file_path} after cleaning: {str(e)}"
-        with open(file_path, 'w', encoding='utf-8') as f: # Added encoding for robustness
+        with open(file_path, 'w', encoding='utf-8') as f: 
             f.write(cleaned_content)
         return None
     except Exception as e:
@@ -169,21 +183,31 @@ def render_with_kroki(mermaid_code, variant, fmt):
             f.write(response.text)
     return f"static/outputs/{variant[f'{fmt}_file']}"
 
-# --- GAP FINDER SPECIFIC FUNCTIONS ---
-
-def extract_text_from_pdf(file_path: str) -> Optional[str]:
-    """Extract text from a PDF file."""
+def extract_text_from_pdf(file_input) -> Optional[str]:
+    """
+    Extract text from a PDF file stream (used for Summarizer) or a file path (used for Gap Finder).
+    File_input can be a file stream from request.files or a string file path.
+    """
     try:
-        with open(file_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
+        if isinstance(file_input, str):
+            with open(file_input, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                text = ""
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text() or ""
+                    text += page_text + "\n"
+            logger.info(f"Successfully extracted text from PDF path: {file_input}")
+        else:
+            pdf_reader = PyPDF2.PdfReader(file_input)
             text = ""
             for page in pdf_reader.pages:
                 page_text = page.extract_text() or ""
                 text += page_text + "\n"
-        logger.info(f"Successfully extracted text from PDF: {file_path}")
+            logger.info("Successfully extracted text from PDF stream.")
+
         return text.strip() if text.strip() else None
     except Exception as e:
-        logger.error(f"Error extracting text from PDF {file_path}: {e}")
+        logger.error(f"Error extracting text from PDF: {e}")
         return None
 
 def sanitize_text(text: str) -> str:
@@ -194,7 +218,6 @@ def sanitize_text(text: str) -> str:
     text = re.sub(r'[^\x00-\x7F]+', '', text)
     return text
 
-# Single Main Gap Analyzer Agent
 gap_analyzer_agent = Agent(
     role='Research Gap Analyzer',
     goal='Analyze uploaded literature review text to identify key research gaps, under-explored areas, and opportunities for future work. Output directly as structured JSON.',
@@ -249,7 +272,68 @@ def run_gap_finder_crew(text: str, document_id: str) -> Dict:
         logger.error(f"Error running gap finder crew: {e}")
         return {"error": f"Analysis failed: {str(e)}"}
 
-# --- Flowchart Generator Logic (Kept as is) ---
+def create_vector_store(text: str, document_id: str) -> Chroma:
+    """Create a vector store from text chunks."""
+    chunks = text_splitter.split_text(text)
+    vector_store = Chroma.from_texts(
+        texts=chunks,
+        embedding=embeddings,
+        collection_name=document_id,
+        persist_directory=VECTOR_DB_DIR
+    )
+    vector_store.persist()
+    logger.info(f"Created vector store for document_id: {document_id}")
+    return vector_store
+
+def generate_summary(vector_store: Chroma, document_id: str) -> Dict:
+    """Generate a structured summary using retrieved chunks."""
+    try:
+        retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+        chunks = retriever.get_relevant_documents("summarize the key points, methodologies, and findings")
+        
+        combined_text = "\n".join([chunk.page_content for chunk in chunks])
+        prompt = (
+            f"Summarize the following document content in a structured JSON format. "
+            f"Include sections for 'key_points', 'methodologies', and 'findings'. "
+            f"Each section should contain a concise list of bullet points (max 5 per section). "
+            f"Ensure clarity and avoid repetition.\n\n"
+            f"Document Content:\n{combined_text}\n\n"
+            f"Output Format:\n"
+            f"{{\"key_points\": [], \"methodologies\": [], \"findings\": []}}"
+        )
+        parser = JsonOutputParser()
+        summary = parser.parse(sanitize_text(llm_gemini.invoke(prompt).content))
+        logger.info(f"Generated summary for document_id: {document_id}")
+        return summary
+    except Exception as e:
+        logger.error(f"Error generating summary for document_id {document_id}: {e}")
+        return {"error": str(e)}
+
+def detect_bias(vector_store: Chroma, document_id: str) -> Dict:
+    """Detect potential biases in tone, framing, and source diversity."""
+    try:
+        retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+        chunks = retriever.get_relevant_documents("analyze tone, framing, and sources")
+        
+        combined_text = "\n".join([chunk.page_content for chunk in chunks])
+        prompt = (
+            f"Analyze the following document content for potential biases in tone, framing, and source diversity. "
+            f"Return a JSON object with sections for 'tone', 'framing', 'source_diversity'. "
+            f"Each section should include a 'description' (brief analysis) and 'flags' (list of specific issues, max 3). "
+            f"Output Format:\n"
+            f"{{\"tone\": {{\"description\": \"\", \"flags\": []}}, "
+            f"\"framing\": {{\"description\": \"\", \"flags\": []}}, "
+            f"\"source_diversity\": {{\"description\": \"\", \"flags\": []}}}}"
+            f"\n\nDocument Content:\n{combined_text}"
+        )
+        parser = JsonOutputParser()
+        bias_analysis = parser.parse(sanitize_text(llm_gemini.invoke(prompt).content))
+        logger.info(f"Generated bias analysis for document_id: {document_id}")
+        return bias_analysis
+    except Exception as e:
+        logger.error(f"Error detecting bias for document_id {document_id}: {e}")
+        return {"error": str(e)}
+
 mermaid_generator = Agent(
     role='Mermaid Code Generator',
     goal='Generate six distinct Mermaid flowchart interpretations with unique logical structures based on a user-provided description.',
@@ -269,7 +353,7 @@ flowchart_renderer = Agent(
 )
 
 def run_crew(flowchart_description):
-    cleanup_old_files(OUTPUT_DIR) # Use the specific cleanup
+    cleanup_old_files(OUTPUT_DIR) 
     variants = [
         {'id': 1, 'name': 'Variant 1', 'json_file': 'mermaid_code_variant1.json', 'svg_file': 'flowchart_output_variant1.svg', 'png_file': 'flowchart_output_variant1.png'},
         {'id': 2, 'name': 'Variant 2', 'json_file': 'mermaid_code_variant2.json', 'svg_file': 'flowchart_output_variant2.svg', 'png_file': 'flowchart_output_variant2.png'},
@@ -322,7 +406,6 @@ def run_crew(flowchart_description):
             if not validate_mermaid_code(mermaid_code):
                 result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': 'Invalid Mermaid code generated'})
                 continue
-            # Render SVG and PNG
             for fmt in ['svg', 'png']:
                 try:
                     render_with_kroki(mermaid_code, variant, fmt)
@@ -335,8 +418,7 @@ def run_crew(flowchart_description):
             result_json['variants'].append({'id': variant['id'], 'name': variant['name'], 'error': str(e)})
     return result_json
 
-# --- Debate Workflow Logic (Kept as is) ---
-def sanitize_text(text):
+def sanitize_text_debate(text): 
     return re.sub(r'\*\*(.*?)\*\*', r'\1', text)
 
 def create_debate_workflow(debate_topic, max_turns):
@@ -357,30 +439,30 @@ def create_debate_workflow(debate_topic, max_turns):
 
     def handle_greeting_node(state):
         prompt = f"Create a neutral introduction to the debate on: '{debate_topic}'. Keep it engaging and informative."
-        greeting = sanitize_text(llm_cohere.invoke(prompt).content)
+        greeting = sanitize_text_debate(llm_cohere.invoke(prompt).content)
         logger.info(f"Generated greeting: {greeting}")
         return {"greeting": greeting, "history": f"Introduction: {greeting}", "count": 0}
 
     def classify_input_node(state):
         history = state.get('history', '')
         prompt = f"Classify the next response in this debate history as either 'proponent' or 'opponent' based on who should speak next. Debate topic: '{debate_topic}'. History: {history}. Respond with only one word: 'proponent' or 'opponent'."
-        classification = sanitize_text(classify_llm.invoke(prompt).content).strip().lower()
+        classification = sanitize_text_debate(classify_llm.invoke(prompt).content).strip().lower()
         if classification not in ['proponent', 'opponent']:
-            classification = 'proponent'  # Default fallback
+            classification = 'proponent'  
         logger.info(f"Classified next speaker: {classification}")
         return {"classification": classification}
 
     def handle_pro(state):
         history = state.get('history', '')
         prompt = f"As the Proponent, provide a strong, evidence-based argument supporting the topic: '{debate_topic}'. Build on previous arguments. Keep concise (2-4 paragraphs). History: {history}"
-        response = sanitize_text(pro_llm.invoke(prompt).content)
+        response = sanitize_text_debate(pro_llm.invoke(prompt).content)
         logger.info(f"Proponent response: {response}")
         return {"history": history + '\n' + f"{classes[0]}: {response}", "current_response": response, "count": state.get('count', 0) + 1}
 
     def handle_opp(state):
         history = state.get('history', '')
         prompt = f"As the Opponent, provide a compelling counter-argument against the topic: '{debate_topic}'. Use logic and evidence. Keep concise (2-4 paragraphs). History: {history}"
-        response = sanitize_text(opp_llm.invoke(prompt).content)
+        response = sanitize_text_debate(opp_llm.invoke(prompt).content)
         logger.info(f"Opponent response: {response}")
         return {"history": history + '\n' + f"{classes[1]}: {response}", "current_response": response, "count": state.get('count', 0) + 1}
 
@@ -388,7 +470,7 @@ def create_debate_workflow(debate_topic, max_turns):
         try:
             summary = state.get('history', '').strip()
             prompt = "Summarize the conversation and judge who won the debate. No ties are allowed. Conversation: {}".format(summary)
-            result = sanitize_text(llm_cohere.invoke(prompt).content)
+            result = sanitize_text_debate(llm_cohere.invoke(prompt).content)
             logger.info(f"Debate result: {result}")
             return {"results": result}
         except Exception as e:
@@ -433,7 +515,6 @@ def create_debate_workflow(debate_topic, max_turns):
 
     return workflow, classes
 
-# --- Knowledge Hub Agents (Kept as is) ---
 youtube_agent = Agent(
     role='YouTube Resource Fetcher',
     goal='Fetch relevant YouTube videos, tutorials, lectures, and explainers based on the query using web search.',
@@ -472,9 +553,8 @@ aggregator_agent = Agent(
 
 def run_knowledge_crew(query):
     """Run the Knowledge Hub crew to fetch and aggregate resources for the given query."""
-    cleanup_old_files(OUTPUT_DIR) # Use the specific cleanup
+    cleanup_old_files(OUTPUT_DIR) 
 
-    # Define Tasks with structured output expectations
     youtube_task = Task(
         description=f"Use Google search with 'site:youtube.com' to find tutorials, lectures, and explainers on '{query}'. Fetch top 5 results with titles, links, and brief descriptions. Return results as a JSON array of objects with keys: title, link, description.",
         expected_output='JSON array of YouTube resources, e.g., [{"title": "Video Title", "link": "url", "description": "desc"}]',
@@ -499,32 +579,30 @@ def run_knowledge_crew(query):
         callback=lambda x: logger.info(f"arXiv task output: {x}")
     )
 
-    # Clean JSON outputs before aggregation
     def clean_task_output(file_path):
         try:
             if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f: # Added encoding
+                with open(file_path, 'r', encoding='utf-8') as f: 
                     raw_content = f.read()
                     logger.info(f"Raw content of {file_path}: {raw_content[:200]}...")
                     cleaned_content = extract_json(raw_content)
-                    json.loads(cleaned_content)  # Validate JSON
-                    with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
+                    json.loads(cleaned_content)
+                    with open(file_path, 'w', encoding='utf-8') as f: 
                         f.write(cleaned_content)
                     logger.info(f"Cleaned JSON for {file_path}: {cleaned_content[:200]}...")
             else:
                 logger.warning(f"File not found: {file_path}")
-                with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
-                    f.write('[]')  # Write empty array as fallback
+                with open(file_path, 'w', encoding='utf-8') as f: 
+                    f.write('[]') 
         except json.JSONDecodeError as e:
             logger.error(f"JSON parsing error in {file_path}: {str(e)}")
-            with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
-                f.write('[]')  # Write empty array as fallback
+            with open(file_path, 'w', encoding='utf-8') as f: 
+                f.write('[]') 
         except Exception as e:
             logger.error(f"Error cleaning {file_path}: {str(e)}")
-            with open(file_path, 'w', encoding='utf-8') as f: # Added encoding
-                f.write('[]')  # Write empty array as fallback
+            with open(file_path, 'w', encoding='utf-8') as f: 
+                f.write('[]') 
 
-    # Run tasks and clean outputs
     crew = Crew(
         agents=[youtube_agent, serper_agent, arxiv_agent],
         tasks=[youtube_task, serper_task, arxiv_task],
@@ -532,7 +610,6 @@ def run_knowledge_crew(query):
     )
     crew.kickoff()
 
-    # Clean YouTube, Serper, and arXiv results before aggregation
     clean_task_output(os.path.join(OUTPUT_DIR, 'youtube_results.json'))
     clean_task_output(os.path.join(OUTPUT_DIR, 'serper_results.json'))
     clean_task_output(os.path.join(OUTPUT_DIR, 'arxiv_results.json'))
@@ -554,7 +631,6 @@ def run_knowledge_crew(query):
         callback=lambda x: logger.info(f"Aggregate task output: {x}")
     )
 
-    # Run aggregation
     try:
         crew = Crew(
             agents=[aggregator_agent],
@@ -563,10 +639,9 @@ def run_knowledge_crew(query):
         )
         crew.kickoff()
 
-        # Parse and clean aggregated results
         aggregated_file = os.path.join(OUTPUT_DIR, 'aggregated_results.json')
         if os.path.exists(aggregated_file):
-            with open(aggregated_file, 'r', encoding='utf-8') as f: # Added encoding
+            with open(aggregated_file, 'r', encoding='utf-8') as f: 
                 raw_content = f.read()
                 logger.info(f"Raw content of aggregated_results.json: {raw_content[:200]}...")
                 cleaned_content = extract_json(raw_content)
@@ -584,8 +659,6 @@ def run_knowledge_crew(query):
         logger.error(f"Error running knowledge crew: {e}")
         return {"error": f"Failed to fetch resources: {str(e)}"}
 
-# --- Flask Routes ---
-
 @app.route('/')
 def index():
     return render_template('home.html')
@@ -602,18 +675,15 @@ def chat():
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
 
-        # Format LangChain prompt (proxy auto-injects memory behind the scenes)
         system_prompt = research_prompt.format(
             user_query=user_message
         )
 
-        # Build messages with system prompt
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
-        # Call Groq via proxy (auto-handles memory injection on top of our prompt)
         response = groq_client.chat.completions.create(
             model="openai/gpt-oss-120b",
             messages=messages,
@@ -647,7 +717,6 @@ def flowchart_generator():
                 error = "Some variants failed. See details below."
     return render_template('flowchart_generator.html', result=result or {}, error=error)
 
-# --- NEW: GAP FINDER ROUTE ---
 @app.route('/gap_finder', methods=['GET', 'POST'])
 def gap_finder():
     result = None
@@ -671,7 +740,7 @@ def gap_finder():
                 file.save(file_path)
                 logger.info(f"File saved to {file_path}")
                 
-                run_cleanup() # Clean up all directories
+                run_cleanup() 
 
                 text = extract_text_from_pdf(file_path)
                 if not text:
@@ -687,7 +756,6 @@ def gap_finder():
                             "gaps": gaps["gaps"],
                             "document_id": document_id
                         }
-                        # Save result with document_id (already handled inside run_gap_finder_crew, but saving the final consolidated result object again for robustness)
                         output_file = os.path.join(GAP_OUTPUT_DIR, f"gaps_{document_id}.json")
                         try:
                             with open(output_file, 'w', encoding='utf-8') as f:
@@ -700,7 +768,54 @@ def gap_finder():
     logger.info(f"Rendering gap_finder.html with result: {result}, error: {error}")
     return render_template('gap_finder.html', result=result or {}, error=error, generation_date=datetime.now())
 
-# --- NEW: GAP DOWNLOAD ROUTE ---
+@app.route('/summarizer', methods=['GET', 'POST'])
+def summarize():
+    result = None
+    error = None
+    document_id = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    if request.method == 'POST':
+        if 'file' not in request.files or not request.files['file'].filename:
+            error = "Please upload a PDF file."
+            logger.warning("No file uploaded in POST request")
+        else:
+            file = request.files['file']
+            if not file.filename.lower().endswith('.pdf'):
+                error = "Only PDF files are supported."
+                logger.warning(f"Invalid file type uploaded: {file.filename}")
+            else:
+                run_cleanup() 
+
+                text = extract_text_from_pdf(file)
+                if not text:
+                    error = "Failed to extract text from PDF."
+                    logger.error("Failed to extract text from uploaded PDF")
+                else:
+                    vector_store = create_vector_store(text, document_id)
+                    
+                    summary = generate_summary(vector_store, document_id)
+                    bias_analysis = detect_bias(vector_store, document_id)
+                    
+                    if "error" in summary or "error" in bias_analysis:
+                        error = "Error processing document: " + (summary.get("error", "") or bias_analysis.get("error", ""))
+                        logger.error(f"Processing error for document_id {document_id}: {error}")
+                    else:
+                        result = {
+                            "summary": summary,
+                            "bias_analysis": bias_analysis,
+                            "document_id": document_id
+                        }
+                        output_file = os.path.join(SUMMARY_OUTPUT_DIR, f"summary_{document_id}.json")
+                        try:
+                            with open(output_file, 'w', encoding='utf-8') as f:
+                                json.dump(result, f, indent=4, ensure_ascii=False)
+                            logger.info(f"Saved summary to {output_file}")
+                        except Exception as e:
+                            error = f"Failed to save summary file: {str(e)}"
+                            logger.error(f"Error saving summary to {output_file}: {e}")
+    
+    return render_template('summarize.html', result=result or {}, error=error, generation_date=datetime.now())
+
 @app.route('/download/gaps/<document_id>.json')
 def download_gaps(document_id):
     try:
@@ -727,6 +842,33 @@ def download_gaps(document_id):
     except Exception as e:
         logger.error(f"Error downloading gap analysis for document_id {document_id}: {e}")
         return jsonify({"error": f"Failed to download gap analysis: {str(e)}"}), 500
+
+@app.route('/download/summary/<document_id>.json')
+def download_summary(document_id):
+    try:
+        file_path = os.path.join(SUMMARY_OUTPUT_DIR, f"summary_{document_id}.json")
+        logger.info(f"Attempting to download file: {file_path}")
+        
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return jsonify({"error": f"Summary file for document ID {document_id} not found"}), 404
+        
+        if not os.access(file_path, os.R_OK):
+            logger.error(f"No read permission for file: {file_path}")
+            return jsonify({"error": f"No read permission for summary file {document_id}"}), 403
+        
+        file_size = os.path.getsize(file_path)
+        logger.info(f"File size for {file_path}: {file_size} bytes")
+        
+        return send_file(
+            file_path,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name=f"summary_{document_id}.json"
+        )
+    except Exception as e:
+        logger.error(f"Error downloading summary for document_id {document_id}: {str(e)}")
+        return jsonify({"error": f"Failed to download summary: {str(e)}"}), 500
 
 @app.route('/multi-agent-debate', methods=['GET', 'POST'])
 def multi_agent_debate():
